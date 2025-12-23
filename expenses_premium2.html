@@ -831,6 +831,30 @@
         }
         .toast-close:hover { opacity: 1; }
 
+        /* Lock Indicator */
+        .lock-indicator {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--accent-green);
+            z-index: 999;
+            font-size: 0.9rem;
+        }
+        .lock-indicator.view-only {
+            border-color: var(--accent-orange);
+            background: rgba(245, 158, 11, 0.1);
+        }
+        .lock-icon { font-size: 1.2rem; }
+        .lock-text { color: var(--text-secondary); }
+
         /* Modal */
         .modal-overlay {
             position: fixed;
@@ -1447,8 +1471,8 @@
                                 <thead>
                                     <tr>
                                         <th>תאריך</th>
-                                        <th>מסלול</th>
-                                        <th>חברת תעופה</th>
+                                        <th>יעד</th>
+                                        <th>מחלקה</th>
                                         <th>מטבע</th>
                                         <th>סכום</th>
                                         <th>סכום (₪)</th>
@@ -1481,9 +1505,7 @@
                             <table class="data-table" id="hotelsTable">
                                 <thead>
                                     <tr>
-                                        <th>צ'ק-אין</th>
-                                        <th>צ'ק-אאוט</th>
-                                        <th>מלון</th>
+                                        <th>מדינה</th>
                                         <th>לילות</th>
                                         <th>מטבע</th>
                                         <th>סכום</th>
@@ -1523,6 +1545,7 @@
                                 <thead>
                                     <tr>
                                         <th>תאריך</th>
+                                        <th>פירוט ההוצאה</th>
                                         <th>עם מלון?</th>
                                         <th>תקרה ($)</th>
                                         <th>מטבע</th>
@@ -1559,9 +1582,7 @@
                             <table class="data-table" id="carTable">
                                 <thead>
                                     <tr>
-                                        <th>תאריך התחלה</th>
-                                        <th>תאריך סיום</th>
-                                        <th>חברה</th>
+                                        <th>מדינה</th>
                                         <th>ימים</th>
                                         <th>מטבע</th>
                                         <th>סכום</th>
@@ -1791,6 +1812,61 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- User Settings Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-title-icon"><i data-lucide="user"></i></span>
+                            הגדרות משתמש
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="settings-section">
+                            <div class="settings-section-title"><i data-lucide="user"></i> זיהוי משתמש</div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">שם משתמש נוכחי</label>
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <span id="currentUserDisplay" style="font-weight: 600; color: var(--accent-gold);"></span>
+                                        <button class="btn btn-secondary btn-sm" onclick="changeUserName()">
+                                            <span><i data-lucide="edit-2"></i></span> שנה שם
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <div class="settings-section-title"><i data-lucide="folder"></i> חיבור לכונן רשת</div>
+                            <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 0.85rem;">
+                                חבר תיקיית נתונים משותפת לעבודה מול כונן רשת. יאפשר נעילת קבצים ועבודה משותפת.
+                            </p>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <button class="btn btn-primary" onclick="selectDataDirectory()">
+                                        <span><i data-lucide="folder-open"></i></span> בחר תיקיית נתונים
+                                    </button>
+                                    <span id="connectedDirectory" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px; display: block;"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <div class="settings-section-title"><i data-lucide="database"></i> ניהול נוסעים שמורים</div>
+                            <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 0.85rem;">
+                                המערכת זוכרת פרטי נוסעים לשימוש חוזר. ניתן לנקות את הרשימה.
+                            </p>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <button class="btn btn-secondary" onclick="clearSavedTravelers()">
+                                        <span><i data-lucide="trash-2"></i></span> נקה נוסעים שמורים
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
     </div>
@@ -1819,7 +1895,321 @@
         </div>
     </div>
 
+    <!-- User Login Modal -->
+    <div class="modal-overlay active" id="userLoginModal">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 class="modal-title">👤 זיהוי משתמש</h3>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                    אנא הזן את שמך כדי לזהות אותך בעבודה משותפת על דוחות
+                </p>
+                <div class="form-group">
+                    <label class="form-label">שם משתמש</label>
+                    <input type="text" class="form-input" id="userNameInput" placeholder="לדוגמה: יוסי כהן" autofocus>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveUserName()">
+                    <span><i data-lucide="log-in"></i></span> כניסה
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lock Status Indicator (will be shown when file is locked) -->
+    <div class="lock-indicator" id="lockIndicator" style="display: none;">
+        <span class="lock-icon" id="lockIcon">🔒</span>
+        <span class="lock-text" id="lockText">נעול על ידך</span>
+    </div>
+
     <script>
+    // ==================== USER & LOCK MANAGEMENT ====================
+    let currentUser = localStorage.getItem('expenseUser') || '';
+    let lockRefreshInterval = null;
+    let isViewOnly = false;
+    let currentProjectHandle = null;
+    let dataDirectoryHandle = null;
+
+    // Check if File System Access API is available
+    const hasFileSystemAccess = 'showDirectoryPicker' in window;
+
+    function initUserSession() {
+        const savedUser = localStorage.getItem('expenseUser');
+        if (savedUser) {
+            currentUser = savedUser;
+            closeUserLoginModal();
+            checkAnnualReminder();
+        } else {
+            document.getElementById('userLoginModal').classList.add('active');
+        }
+    }
+
+    function saveUserName() {
+        const nameInput = document.getElementById('userNameInput');
+        const name = nameInput.value.trim();
+        if (!name) {
+            showToast('נא להזין שם משתמש', 'warning');
+            return;
+        }
+        currentUser = name;
+        localStorage.setItem('expenseUser', name);
+        closeUserLoginModal();
+        showToast(`שלום ${name}!`, 'success');
+        checkAnnualReminder();
+    }
+
+    function closeUserLoginModal() {
+        document.getElementById('userLoginModal').classList.remove('active');
+        updateCurrentUserDisplay();
+    }
+
+    function updateCurrentUserDisplay() {
+        const display = document.getElementById('currentUserDisplay');
+        if (display) {
+            display.textContent = currentUser || 'לא מוגדר';
+        }
+    }
+
+    function clearSavedTravelers() {
+        if (confirm('האם למחוק את כל הנוסעים השמורים?')) {
+            localStorage.removeItem('knownTravelers');
+            showToast('נוסעים שמורים נמחקו', 'info');
+        }
+    }
+
+    function changeUserName() {
+        const newName = prompt('הזן שם משתמש חדש:', currentUser);
+        if (newName && newName.trim()) {
+            currentUser = newName.trim();
+            localStorage.setItem('expenseUser', currentUser);
+            updateCurrentUserDisplay();
+            showToast(`השם שונה ל-${currentUser}`, 'success');
+        }
+    }
+
+    // ==================== FILE LOCKING SYSTEM ====================
+    async function selectDataDirectory() {
+        if (!hasFileSystemAccess) {
+            showToast('הדפדפן אינו תומך בגישה לקבצים. השתמש בשמירה/טעינה ידנית.', 'warning');
+            return false;
+        }
+        try {
+            dataDirectoryHandle = await window.showDirectoryPicker({
+                mode: 'readwrite',
+                startIn: 'documents'
+            });
+            localStorage.setItem('lastDataDirectory', dataDirectoryHandle.name);
+            updateConnectedDirectoryDisplay();
+            showToast(`מחובר לתיקיית ${dataDirectoryHandle.name}`, 'success');
+            return true;
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                console.error('Error selecting directory:', err);
+                showToast('שגיאה בבחירת תיקייה', 'error');
+            }
+            return false;
+        }
+    }
+
+    function updateConnectedDirectoryDisplay() {
+        const display = document.getElementById('connectedDirectory');
+        if (display) {
+            if (dataDirectoryHandle) {
+                display.textContent = `מחובר ל: ${dataDirectoryHandle.name}`;
+                display.style.color = 'var(--accent-green)';
+            } else {
+                display.textContent = 'לא מחובר לתיקייה';
+                display.style.color = 'var(--text-muted)';
+            }
+        }
+    }
+
+    async function createLockFile(projectName) {
+        if (!dataDirectoryHandle) return false;
+        try {
+            const lockFileName = `${projectName}.lock`;
+            const lockFile = await dataDirectoryHandle.getFileHandle(lockFileName, { create: true });
+            const writable = await lockFile.createWritable();
+            const lockData = {
+                user: currentUser,
+                lockedAt: new Date().toISOString(),
+                lastActivity: new Date().toISOString()
+            };
+            await writable.write(JSON.stringify(lockData, null, 2));
+            await writable.close();
+            startLockRefresh(projectName);
+            updateLockIndicator(true, false);
+            return true;
+        } catch (err) {
+            console.error('Error creating lock file:', err);
+            return false;
+        }
+    }
+
+    async function checkLockFile(projectName) {
+        if (!dataDirectoryHandle) return { locked: false };
+        try {
+            const lockFileName = `${projectName}.lock`;
+            const lockFile = await dataDirectoryHandle.getFileHandle(lockFileName);
+            const file = await lockFile.getFile();
+            const text = await file.text();
+            const lockData = JSON.parse(text);
+
+            // Check if lock is expired (30 minutes)
+            const lastActivity = new Date(lockData.lastActivity);
+            const now = new Date();
+            const diffMinutes = (now - lastActivity) / (1000 * 60);
+
+            if (diffMinutes > 30) {
+                // Lock expired, can take over
+                return { locked: false, expired: true, previousUser: lockData.user };
+            }
+
+            // Check if it's our own lock
+            if (lockData.user === currentUser) {
+                return { locked: true, isOurs: true };
+            }
+
+            return { locked: true, isOurs: false, user: lockData.user, lockedAt: lockData.lockedAt };
+        } catch (err) {
+            // No lock file exists
+            return { locked: false };
+        }
+    }
+
+    async function releaseLock(projectName, force = false) {
+        if (!dataDirectoryHandle) return;
+        try {
+            const lockFileName = `${projectName}.lock`;
+            // Check if we own the lock or forcing
+            const lockStatus = await checkLockFile(projectName);
+            if (lockStatus.locked && !lockStatus.isOurs && !force) {
+                showToast('אין לך הרשאה לשחרר נעילה זו', 'error');
+                return false;
+            }
+            await dataDirectoryHandle.removeEntry(lockFileName);
+            stopLockRefresh();
+            updateLockIndicator(false, false);
+            showToast('הנעילה שוחררה', 'info');
+            return true;
+        } catch (err) {
+            console.error('Error releasing lock:', err);
+            return false;
+        }
+    }
+
+    async function refreshLock(projectName) {
+        if (!dataDirectoryHandle) return;
+        try {
+            const lockFileName = `${projectName}.lock`;
+            const lockFile = await dataDirectoryHandle.getFileHandle(lockFileName);
+            const file = await lockFile.getFile();
+            const text = await file.text();
+            const lockData = JSON.parse(text);
+
+            if (lockData.user === currentUser) {
+                lockData.lastActivity = new Date().toISOString();
+                const writable = await lockFile.createWritable();
+                await writable.write(JSON.stringify(lockData, null, 2));
+                await writable.close();
+            }
+        } catch (err) {
+            console.error('Error refreshing lock:', err);
+        }
+    }
+
+    function startLockRefresh(projectName) {
+        stopLockRefresh();
+        lockRefreshInterval = setInterval(() => refreshLock(projectName), 5 * 60 * 1000); // Every 5 minutes
+    }
+
+    function stopLockRefresh() {
+        if (lockRefreshInterval) {
+            clearInterval(lockRefreshInterval);
+            lockRefreshInterval = null;
+        }
+    }
+
+    function updateLockIndicator(locked, viewOnly) {
+        const indicator = document.getElementById('lockIndicator');
+        const icon = document.getElementById('lockIcon');
+        const text = document.getElementById('lockText');
+
+        if (locked) {
+            indicator.style.display = 'flex';
+            if (viewOnly) {
+                icon.textContent = '👁️';
+                text.textContent = 'מצב צפייה בלבד';
+                indicator.classList.add('view-only');
+            } else {
+                icon.textContent = '🔒';
+                text.textContent = 'נעול על ידך';
+                indicator.classList.remove('view-only');
+            }
+        } else {
+            indicator.style.display = 'none';
+        }
+        isViewOnly = viewOnly;
+        toggleViewOnlyMode(viewOnly);
+    }
+
+    function toggleViewOnlyMode(viewOnly) {
+        document.querySelectorAll('.form-input, .table-input, .form-select').forEach(el => {
+            el.disabled = viewOnly;
+        });
+        document.querySelectorAll('.add-row-btn, .btn-primary, .btn-success').forEach(el => {
+            if (viewOnly) {
+                el.style.opacity = '0.5';
+                el.style.pointerEvents = 'none';
+            } else {
+                el.style.opacity = '';
+                el.style.pointerEvents = '';
+            }
+        });
+    }
+
+    // ==================== ANNUAL REMINDER ====================
+    function checkAnnualReminder() {
+        const today = new Date();
+        const month = today.getMonth(); // 0 = January
+        const day = today.getDate();
+
+        // Check if it's January 1st
+        if (month === 0 && day === 1) {
+            const lastReminder = localStorage.getItem('lastTaxReminderYear');
+            const currentYear = today.getFullYear().toString();
+
+            if (lastReminder !== currentYear) {
+                setTimeout(() => {
+                    showTaxReminderModal();
+                }, 2000);
+                localStorage.setItem('lastTaxReminderYear', currentYear);
+            }
+        }
+    }
+
+    function showTaxReminderModal() {
+        const newYear = new Date().getFullYear();
+        if (confirm(`🎉 שנה טובה!\n\nתזכורת: אנא עדכן את תקרות המס לשנת ${newYear}.\n\nלהעביר להגדרות עכשיו?`)) {
+            switchSection('settings');
+        }
+    }
+
+    // Handle page unload - release lock
+    window.addEventListener('beforeunload', async (e) => {
+        if (currentProjectHandle && dataDirectoryHandle) {
+            // Note: async operations may not complete on beforeunload
+            // This is a best-effort attempt
+            try {
+                await releaseLock(state.trip.reportName || 'default');
+            } catch (err) {
+                console.error('Error releasing lock on unload:', err);
+            }
+        }
+    });
+
     // ==================== GLOBAL STATE ====================
     let state = {
         trip: {
@@ -1883,7 +2273,10 @@
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
-        
+
+        // Initialize user session (shows login modal if needed)
+        initUserSession();
+
         loadFromLocalStorage();
         initializeTaxSettings();
         initializeNavigation();
@@ -2196,10 +2589,31 @@
     }
 
     // ==================== TRAVELERS ====================
+    // Travelers memory - save/load known travelers
+    function getSavedTravelers() {
+        try {
+            return JSON.parse(localStorage.getItem('knownTravelers') || '{}');
+        } catch {
+            return {};
+        }
+    }
+
+    function saveTravelerToMemory(id, name, role) {
+        if (!id || !name) return;
+        const travelers = getSavedTravelers();
+        travelers[id] = { name, role, lastUsed: new Date().toISOString() };
+        localStorage.setItem('knownTravelers', JSON.stringify(travelers));
+    }
+
+    function lookupTraveler(id) {
+        const travelers = getSavedTravelers();
+        return travelers[id] || null;
+    }
+
     function addTraveler(data = {}) {
         const container = document.getElementById('travelersContainer');
         const index = container.querySelectorAll('.traveler-card').length + 1;
-        
+
         const card = document.createElement('div');
         card.className = 'traveler-card';
         card.innerHTML = `
@@ -2214,21 +2628,50 @@
             </div>
             <div class="form-grid">
                 <div class="form-group">
+                    <label class="form-label">ת.ז.</label>
+                    <input type="text" class="form-input traveler-id" value="${data.id || ''}" placeholder="מספר זהות" oninput="onTravelerIdInput(this)">
+                    <span class="form-hint">הקלד ת.ז. לחיפוש נוסע קיים</span>
+                </div>
+                <div class="form-group">
                     <label class="form-label">שם מלא</label>
-                    <input type="text" class="form-input traveler-name" value="${data.name || ''}" placeholder="שם הנוסע">
+                    <input type="text" class="form-input traveler-name" value="${data.name || ''}" placeholder="שם הנוסע" onchange="onTravelerDataChange(this)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">תפקיד</label>
-                    <input type="text" class="form-input traveler-role" value="${data.role || ''}" placeholder="תפקיד">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">ת.ז.</label>
-                    <input type="text" class="form-input traveler-id" value="${data.id || ''}" placeholder="מספר זהות">
+                    <input type="text" class="form-input traveler-role" value="${data.role || ''}" placeholder="תפקיד" onchange="onTravelerDataChange(this)">
                 </div>
             </div>
         `;
-        
+
         container.appendChild(card);
+        updatePaidByOptions();
+        saveToLocalStorage();
+    }
+
+    function onTravelerIdInput(input) {
+        const id = input.value.trim();
+        if (id.length >= 5) { // Only lookup if ID is at least 5 chars
+            const savedTraveler = lookupTraveler(id);
+            if (savedTraveler) {
+                const card = input.closest('.traveler-card');
+                const nameInput = card.querySelector('.traveler-name');
+                const roleInput = card.querySelector('.traveler-role');
+                if (!nameInput.value) nameInput.value = savedTraveler.name;
+                if (!roleInput.value && savedTraveler.role) roleInput.value = savedTraveler.role;
+                showToast(`נמצא נוסע קיים: ${savedTraveler.name}`, 'info');
+                updatePaidByOptions();
+            }
+        }
+    }
+
+    function onTravelerDataChange(input) {
+        const card = input.closest('.traveler-card');
+        const id = card.querySelector('.traveler-id').value.trim();
+        const name = card.querySelector('.traveler-name').value.trim();
+        const role = card.querySelector('.traveler-role').value.trim();
+        if (id && name) {
+            saveTravelerToMemory(id, name, role);
+        }
         updatePaidByOptions();
         saveToLocalStorage();
     }
@@ -2326,12 +2769,19 @@
         const currencyRate = getCurrencyRate(currency);
         const amount = parseFloat(data.amount) || 0;
         const amountILS = amount * currencyRate;
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><input type="date" class="table-input" data-field="date" value="${data.date || ''}"></td>
-            <td><input type="text" class="table-input" data-field="route" value="${data.route || ''}" placeholder="TLV-ATH"></td>
-            <td><input type="text" class="table-input" data-field="airline" value="${data.airline || ''}" placeholder="Aegean"></td>
+            <td><input type="text" class="table-input" data-field="destination" value="${data.destination || ''}" placeholder="אתונה, יוון"></td>
+            <td>
+                <select class="table-input" data-field="flightClass">
+                    <option value="economy" ${data.flightClass === 'economy' ? 'selected' : ''}>תיירים</option>
+                    <option value="premium" ${data.flightClass === 'premium' ? 'selected' : ''}>פרימיום</option>
+                    <option value="business" ${data.flightClass === 'business' ? 'selected' : ''}>עסקים</option>
+                    <option value="first" ${data.flightClass === 'first' ? 'selected' : ''}>ראשונה</option>
+                </select>
+            </td>
             <td>${createCurrencySelect(currency)}</td>
             <td><input type="number" class="table-input" data-field="amount" value="${data.amount || ''}" step="0.01" oninput="updateRowCalculations(this)"></td>
             <td class="amount-cell amount-ils">₪${amountILS.toFixed(2)}</td>
@@ -2353,26 +2803,24 @@
         const currency = data.currency || 'USD';
         const currencyRate = getCurrencyRate(currency);
         const rate = getRate(); // USD rate for limits
-        
+
         const amount = parseFloat(data.amount) || 0;
         const nights = parseInt(data.nights) || 1;
         const amountILS = amount * currencyRate;
-        
+
         // Calculate hotel limit based on night tier (limits are in USD)
         const nightLimit = getHotelNightLimit(nights, settings);
         const amountInUSD = amount * (currencyRate / rate); // Convert to USD for limit comparison
         const recognizedUSD = Math.min(amountInUSD / nights, nightLimit) * nights;
         const recognizedILS = recognizedUSD * rate;
         const coordinationILS = Math.max(0, amountILS - recognizedILS);
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><input type="date" class="table-input" data-field="checkIn" value="${data.checkIn || ''}" onchange="updateHotelNights(this)"></td>
-            <td><input type="date" class="table-input" data-field="checkOut" value="${data.checkOut || ''}" onchange="updateHotelNights(this)"></td>
-            <td><input type="text" class="table-input" data-field="hotel" value="${data.hotel || ''}" placeholder="שם המלון"></td>
-            <td class="nights-cell">${nights}</td>
+            <td><input type="text" class="table-input" data-field="country" value="${data.country || ''}" placeholder="יוון"></td>
+            <td><input type="number" class="table-input nights-input" data-field="nights" value="${nights}" min="1" oninput="updateHotelCalculations(this)"></td>
             <td>${createCurrencySelect(currency)}</td>
-            <td><input type="number" class="table-input" data-field="amount" value="${data.amount || ''}" step="0.01" oninput="updateRowCalculations(this)"></td>
+            <td><input type="number" class="table-input" data-field="amount" value="${data.amount || ''}" step="0.01" oninput="updateHotelCalculations(this)"></td>
             <td class="amount-cell amount-ils">₪${amountILS.toFixed(2)}</td>
             <td class="amount-cell amount-positive recognized-ils">₪${recognizedILS.toFixed(2)}</td>
             <td class="amount-cell amount-negative coordination-ils">₪${coordinationILS.toFixed(2)}</td>
@@ -2387,16 +2835,28 @@
         saveToLocalStorage();
     }
 
-    function updateHotelNights(input) {
+    function updateHotelCalculations(input) {
         const row = input.closest('tr');
-        const checkIn = row.querySelector('[data-field="checkIn"]').value;
-        const checkOut = row.querySelector('[data-field="checkOut"]').value;
-        
-        if (checkIn && checkOut) {
-            const nights = Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24));
-            row.querySelector('.nights-cell').textContent = nights > 0 ? nights : 1;
-        }
-        updateRowCalculations(input);
+        const settings = getCurrentTaxSettings();
+        const rate = getRate();
+        const currencySelect = row.querySelector('[data-field="currency"]');
+        const currency = currencySelect?.value || 'USD';
+        const currencyRate = getCurrencyRate(currency);
+
+        const nights = parseInt(row.querySelector('[data-field="nights"]')?.value) || 1;
+        const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
+        const amountILS = amount * currencyRate;
+
+        const nightLimit = getHotelNightLimit(nights, settings);
+        const amountInUSD = amount * (currencyRate / rate);
+        const recognizedUSD = Math.min(amountInUSD / nights, nightLimit) * nights;
+        const recognizedILS = recognizedUSD * rate;
+        const coordinationILS = Math.max(0, amountILS - recognizedILS);
+
+        row.querySelector('.amount-ils').textContent = `₪${amountILS.toFixed(2)}`;
+        row.querySelector('.recognized-ils').textContent = `₪${recognizedILS.toFixed(2)}`;
+        row.querySelector('.coordination-ils').textContent = `₪${coordinationILS.toFixed(2)}`;
+        saveToLocalStorage();
     }
 
     function getHotelNightLimit(nightNumber, settings) {
@@ -2415,7 +2875,7 @@
         const settings = getCurrentTaxSettings();
         const currency = data.currency || 'ILS';
         const currencyRate = getCurrencyRate(currency);
-        
+
         const withHotel = data.withHotel !== undefined ? data.withHotel : true;
         const limitUSD = withHotel ? settings.perDiemWithHotel : settings.perDiemWithoutHotel;
         const amount = parseFloat(data.amount) || 0;
@@ -2423,10 +2883,11 @@
         const amountInUSD = amount * (currencyRate / rate);
         const recognizedILS = Math.min(amountInUSD, limitUSD) * rate;
         const coordinationILS = Math.max(0, amountILS - recognizedILS);
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><input type="date" class="table-input" data-field="date" value="${data.date || ''}"></td>
+            <td><input type="text" class="table-input" data-field="description" value="${data.description || ''}" placeholder="ארוחת ערב, קפה וכו'"></td>
             <td>
                 <select class="table-input" data-field="withHotel" onchange="updateRowCalculations(this)">
                     <option value="true" ${withHotel ? 'selected' : ''}>כן</option>
@@ -2485,7 +2946,7 @@
         const settings = getCurrentTaxSettings();
         const currency = data.currency || 'USD';
         const currencyRate = getCurrencyRate(currency);
-        
+
         const amount = parseFloat(data.amount) || 0;
         const days = parseInt(data.days) || 1;
         const amountILS = amount * currencyRate;
@@ -2494,15 +2955,13 @@
         const recognizedUSD = Math.min(amountInUSD / days, limitPerDay) * days;
         const recognizedILS = recognizedUSD * rate;
         const coordinationILS = Math.max(0, amountILS - recognizedILS);
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><input type="date" class="table-input" data-field="startDate" value="${data.startDate || ''}" onchange="updateCarDays(this)"></td>
-            <td><input type="date" class="table-input" data-field="endDate" value="${data.endDate || ''}" onchange="updateCarDays(this)"></td>
-            <td><input type="text" class="table-input" data-field="company" value="${data.company || ''}" placeholder="חברת השכרה"></td>
-            <td class="days-cell">${days}</td>
+            <td><input type="text" class="table-input" data-field="country" value="${data.country || ''}" placeholder="יוון"></td>
+            <td><input type="number" class="table-input" data-field="days" value="${days}" min="1" oninput="updateCarCalculations(this)"></td>
             <td>${createCurrencySelect(currency)}</td>
-            <td><input type="number" class="table-input" data-field="amount" value="${data.amount || ''}" step="0.01" oninput="updateRowCalculations(this)"></td>
+            <td><input type="number" class="table-input" data-field="amount" value="${data.amount || ''}" step="0.01" oninput="updateCarCalculations(this)"></td>
             <td class="amount-cell amount-ils">₪${amountILS.toFixed(2)}</td>
             <td class="amount-cell amount-positive recognized-ils">₪${recognizedILS.toFixed(2)}</td>
             <td class="amount-cell amount-negative coordination-ils">₪${coordinationILS.toFixed(2)}</td>
@@ -2517,16 +2976,27 @@
         saveToLocalStorage();
     }
 
-    function updateCarDays(input) {
+    function updateCarCalculations(input) {
         const row = input.closest('tr');
-        const startDate = row.querySelector('[data-field="startDate"]').value;
-        const endDate = row.querySelector('[data-field="endDate"]').value;
-        
-        if (startDate && endDate) {
-            const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
-            row.querySelector('.days-cell').textContent = days > 0 ? days : 1;
-        }
-        updateRowCalculations(input);
+        const settings = getCurrentTaxSettings();
+        const rate = getRate();
+        const currencySelect = row.querySelector('[data-field="currency"]');
+        const currency = currencySelect?.value || 'USD';
+        const currencyRate = getCurrencyRate(currency);
+
+        const days = parseInt(row.querySelector('[data-field="days"]')?.value) || 1;
+        const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
+        const amountILS = amount * currencyRate;
+        const amountInUSD = amount * (currencyRate / rate);
+        const limitPerDay = settings.carRentalLimit;
+        const recognizedUSD = Math.min(amountInUSD / days, limitPerDay) * days;
+        const recognizedILS = recognizedUSD * rate;
+        const coordinationILS = Math.max(0, amountILS - recognizedILS);
+
+        row.querySelector('.amount-ils').textContent = `₪${amountILS.toFixed(2)}`;
+        row.querySelector('.recognized-ils').textContent = `₪${recognizedILS.toFixed(2)}`;
+        row.querySelector('.coordination-ils').textContent = `₪${coordinationILS.toFixed(2)}`;
+        saveToLocalStorage();
     }
 
     // Other Expenses
