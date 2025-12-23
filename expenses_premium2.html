@@ -855,6 +855,156 @@
         .lock-icon { font-size: 1.2rem; }
         .lock-text { color: var(--text-secondary); }
 
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-secondary);
+        }
+        .empty-state .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .empty-state h3 {
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .empty-state p {
+            margin-bottom: 24px;
+        }
+
+        /* Projects Panel */
+        .projects-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .connected-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-green);
+            font-weight: 500;
+        }
+        .connected-icon { font-size: 1.2rem; }
+        .projects-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .projects-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .project-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            transition: all var(--transition-fast);
+        }
+        .project-item:hover {
+            border-color: var(--accent-blue);
+            background: var(--bg-card-hover);
+        }
+        .project-item.locked-by-other {
+            opacity: 0.7;
+            border-color: var(--accent-orange);
+        }
+        .project-item.locked-by-me {
+            border-color: var(--accent-green);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .project-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .project-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+        .project-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 16px;
+        }
+
+        .project-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-badge.available {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+        }
+        .status-badge.locked {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--accent-orange);
+        }
+        .status-badge.locked-by-me {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-blue);
+        }
+
+        .project-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Instructions */
+        .instructions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .instruction-item {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+        .instruction-number {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .instruction-content strong {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+        .instruction-content p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
         /* Modal */
         .modal-overlay {
             position: fixed;
@@ -1219,6 +1369,14 @@
 
             <nav class="sidebar-nav">
                 <div class="nav-section">
+                    <div class="nav-section-title">פרויקטים</div>
+                    <div class="nav-item" data-section="projects">
+                        <span class="nav-item-icon"><i data-lucide="folder-open"></i></span>
+                        <span class="nav-item-text">ניהול פרויקטים</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
                     <div class="nav-section-title">ניהול</div>
                     <div class="nav-item active" data-section="trip">
                         <span class="nav-item-icon"><i data-lucide="home"></i></span>
@@ -1336,6 +1494,93 @@
                     <span><i data-lucide="trash-2"></i></span> נקה הכל
                 </div>
             </div>
+
+            <!-- Projects Section -->
+            <section class="content-section" id="projectsSection">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-title-icon"><i data-lucide="folder-open"></i></span>
+                            ניהול פרויקטים - כונן משותף
+                        </h2>
+                        <button class="btn btn-primary btn-sm" onclick="selectDataDirectory()">
+                            <span><i data-lucide="hard-drive"></i></span> בחר תיקייה
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="noDirectoryMessage" class="empty-state">
+                            <div class="empty-icon"><i data-lucide="folder-x"></i></div>
+                            <h3>לא נבחרה תיקיית נתונים</h3>
+                            <p>לחץ על "בחר תיקייה" כדי להתחבר לתיקייה משותפת בכונן הרשת</p>
+                            <button class="btn btn-primary" onclick="selectDataDirectory()">
+                                <span><i data-lucide="folder-open"></i></span> בחר תיקיית נתונים
+                            </button>
+                        </div>
+
+                        <div id="projectsPanel" style="display: none;">
+                            <div class="projects-toolbar">
+                                <div class="connected-info">
+                                    <span class="connected-icon">📁</span>
+                                    <span id="connectedFolderName">לא מחובר</span>
+                                </div>
+                                <div class="projects-actions">
+                                    <button class="btn btn-success btn-sm" onclick="createNewProject()">
+                                        <span><i data-lucide="plus"></i></span> פרויקט חדש
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" onclick="refreshProjectsList()">
+                                        <span><i data-lucide="refresh-cw"></i></span> רענן
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="projects-list" id="projectsList">
+                                <!-- Projects will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-title-icon"><i data-lucide="info"></i></span>
+                            הוראות שימוש
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="instructions-list">
+                            <div class="instruction-item">
+                                <span class="instruction-number">1</span>
+                                <div class="instruction-content">
+                                    <strong>בחר תיקייה משותפת</strong>
+                                    <p>בחר תיקייה בכונן הרשת (לדוגמה: F:\ExpenseReports\data)</p>
+                                </div>
+                            </div>
+                            <div class="instruction-item">
+                                <span class="instruction-number">2</span>
+                                <div class="instruction-content">
+                                    <strong>צור או פתח פרויקט</strong>
+                                    <p>כל פרויקט נשמר כקובץ JSON נפרד בתיקייה</p>
+                                </div>
+                            </div>
+                            <div class="instruction-item">
+                                <span class="instruction-number">3</span>
+                                <div class="instruction-content">
+                                    <strong>נעילה אוטומטית</strong>
+                                    <p>כשתפתח פרויקט, הוא יינעל ואחרים יראו שאתה עובד עליו</p>
+                                </div>
+                            </div>
+                            <div class="instruction-item">
+                                <span class="instruction-number">4</span>
+                                <div class="instruction-content">
+                                    <strong>שמור את עבודתך</strong>
+                                    <p>לחץ "שמור" באופן קבוע - השינויים נשמרים לקובץ המשותף</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <!-- Trip Section -->
             <section class="content-section active" id="tripSection">
@@ -1990,6 +2235,8 @@
     }
 
     // ==================== FILE LOCKING SYSTEM ====================
+    let currentProjectName = null;
+
     async function selectDataDirectory() {
         if (!hasFileSystemAccess) {
             showToast('הדפדפן אינו תומך בגישה לקבצים. השתמש בשמירה/טעינה ידנית.', 'warning');
@@ -2002,6 +2249,8 @@
             });
             localStorage.setItem('lastDataDirectory', dataDirectoryHandle.name);
             updateConnectedDirectoryDisplay();
+            updateProjectsPanel();
+            await refreshProjectsList();
             showToast(`מחובר לתיקיית ${dataDirectoryHandle.name}`, 'success');
             return true;
         } catch (err) {
@@ -2023,6 +2272,303 @@
                 display.textContent = 'לא מחובר לתיקייה';
                 display.style.color = 'var(--text-muted)';
             }
+        }
+    }
+
+    function updateProjectsPanel() {
+        const noDir = document.getElementById('noDirectoryMessage');
+        const panel = document.getElementById('projectsPanel');
+        const folderName = document.getElementById('connectedFolderName');
+
+        if (dataDirectoryHandle) {
+            noDir.style.display = 'none';
+            panel.style.display = 'block';
+            folderName.textContent = dataDirectoryHandle.name;
+        } else {
+            noDir.style.display = 'block';
+            panel.style.display = 'none';
+        }
+    }
+
+    async function refreshProjectsList() {
+        if (!dataDirectoryHandle) return;
+
+        const listContainer = document.getElementById('projectsList');
+        listContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">טוען פרויקטים...</div>';
+
+        try {
+            const projects = [];
+
+            // Iterate through files in directory
+            for await (const entry of dataDirectoryHandle.values()) {
+                if (entry.kind === 'file' && entry.name.endsWith('.json') && !entry.name.endsWith('.lock')) {
+                    const projectName = entry.name.replace('.json', '');
+                    const file = await entry.getFile();
+                    const lastModified = new Date(file.lastModified);
+
+                    // Check lock status
+                    const lockStatus = await checkLockFile(projectName);
+
+                    projects.push({
+                        name: projectName,
+                        fileName: entry.name,
+                        lastModified,
+                        size: file.size,
+                        lockStatus
+                    });
+                }
+            }
+
+            // Sort by last modified (newest first)
+            projects.sort((a, b) => b.lastModified - a.lastModified);
+
+            if (projects.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="empty-state" style="padding: 32px;">
+                        <p>אין פרויקטים בתיקייה זו</p>
+                        <button class="btn btn-primary btn-sm" onclick="createNewProject()">
+                            <span><i data-lucide="plus"></i></span> צור פרויקט חדש
+                        </button>
+                    </div>
+                `;
+            } else {
+                listContainer.innerHTML = projects.map(p => renderProjectItem(p)).join('');
+            }
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } catch (err) {
+            console.error('Error loading projects:', err);
+            listContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--accent-red);">שגיאה בטעינת הפרויקטים</div>';
+        }
+    }
+
+    function renderProjectItem(project) {
+        const { name, lastModified, lockStatus } = project;
+        const formattedDate = lastModified.toLocaleDateString('he-IL') + ' ' + lastModified.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+
+        let statusClass = '';
+        let statusBadge = '<span class="status-badge available">פנוי</span>';
+        let actionButtons = `
+            <button class="btn btn-primary btn-sm" onclick="openProject('${name}')">
+                <span><i data-lucide="folder-open"></i></span> פתח
+            </button>
+        `;
+
+        if (lockStatus.locked) {
+            if (lockStatus.isOurs) {
+                statusClass = 'locked-by-me';
+                statusBadge = '<span class="status-badge locked-by-me">נעול על ידך</span>';
+                actionButtons = `
+                    <button class="btn btn-primary btn-sm" onclick="openProject('${name}')">
+                        <span><i data-lucide="folder-open"></i></span> המשך עריכה
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="releaseProjectLock('${name}')">
+                        <span><i data-lucide="unlock"></i></span> שחרר
+                    </button>
+                `;
+            } else {
+                statusClass = 'locked-by-other';
+                statusBadge = `<span class="status-badge locked">נעול ע"י ${lockStatus.user}</span>`;
+                actionButtons = `
+                    <button class="btn btn-secondary btn-sm" onclick="openProjectViewOnly('${name}')">
+                        <span><i data-lucide="eye"></i></span> צפייה בלבד
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="forceUnlockProject('${name}', '${lockStatus.user}')" title="שבור נעילה">
+                        <span><i data-lucide="unlock"></i></span>
+                    </button>
+                `;
+            }
+        }
+
+        return `
+            <div class="project-item ${statusClass}">
+                <div class="project-info">
+                    <div class="project-name">📄 ${name}</div>
+                    <div class="project-meta">
+                        <span>עודכן: ${formattedDate}</span>
+                    </div>
+                </div>
+                <div class="project-status">
+                    ${statusBadge}
+                    <div class="project-actions">
+                        ${actionButtons}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function createNewProject() {
+        const name = prompt('שם הפרויקט החדש:');
+        if (!name || !name.trim()) return;
+
+        const projectName = name.trim().replace(/[^a-zA-Z0-9א-ת\-_\s]/g, '');
+        if (!projectName) {
+            showToast('שם לא חוקי', 'error');
+            return;
+        }
+
+        try {
+            // Check if project already exists
+            try {
+                await dataDirectoryHandle.getFileHandle(`${projectName}.json`);
+                showToast('פרויקט בשם זה כבר קיים', 'warning');
+                return;
+            } catch {
+                // File doesn't exist, which is what we want
+            }
+
+            // Create new empty project file
+            const fileHandle = await dataDirectoryHandle.getFileHandle(`${projectName}.json`, { create: true });
+            const writable = await fileHandle.createWritable();
+
+            const newState = {
+                trip: {
+                    reportName: projectName,
+                    companyName: '',
+                    reportDate: new Date().toISOString().split('T')[0],
+                    country: '',
+                    startDate: '',
+                    endDate: '',
+                    days: 0,
+                    exchangeRate: 3.65
+                },
+                travelers: [],
+                expenses: { flights: [], hotels: [], perdiem: [], car: [], other: [] },
+                advances: [],
+                taxSettings: {}
+            };
+
+            await writable.write(JSON.stringify(newState, null, 2));
+            await writable.close();
+
+            showToast(`פרויקט "${projectName}" נוצר בהצלחה`, 'success');
+            await refreshProjectsList();
+
+            // Open the new project
+            await openProject(projectName);
+        } catch (err) {
+            console.error('Error creating project:', err);
+            showToast('שגיאה ביצירת הפרויקט', 'error');
+        }
+    }
+
+    async function openProject(projectName) {
+        if (!dataDirectoryHandle) return;
+
+        try {
+            // Check lock status
+            const lockStatus = await checkLockFile(projectName);
+
+            if (lockStatus.locked && !lockStatus.isOurs) {
+                const confirm = window.confirm(`הפרויקט נעול על ידי ${lockStatus.user}.\n\nהאם לפתוח במצב צפייה בלבד?`);
+                if (confirm) {
+                    await openProjectViewOnly(projectName);
+                }
+                return;
+            }
+
+            // Load project data
+            const fileHandle = await dataDirectoryHandle.getFileHandle(`${projectName}.json`);
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            const loadedState = JSON.parse(text);
+
+            // Create lock file
+            await createLockFile(projectName);
+            currentProjectName = projectName;
+            currentProjectHandle = fileHandle;
+
+            // Load state
+            state = loadedState;
+            clearAllWithoutConfirm();
+            populateFormFromState();
+            recalculateAll();
+            updateAllBadges();
+
+            // Switch to trip section
+            switchSection('trip');
+            showToast(`פרויקט "${projectName}" נטען ונעול לעריכה`, 'success');
+            await refreshProjectsList();
+        } catch (err) {
+            console.error('Error opening project:', err);
+            showToast('שגיאה בפתיחת הפרויקט', 'error');
+        }
+    }
+
+    async function openProjectViewOnly(projectName) {
+        if (!dataDirectoryHandle) return;
+
+        try {
+            const fileHandle = await dataDirectoryHandle.getFileHandle(`${projectName}.json`);
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            const loadedState = JSON.parse(text);
+
+            currentProjectName = projectName;
+            currentProjectHandle = null; // No handle = no saving
+
+            state = loadedState;
+            clearAllWithoutConfirm();
+            populateFormFromState();
+            recalculateAll();
+            updateAllBadges();
+
+            updateLockIndicator(true, true); // View only mode
+            switchSection('trip');
+            showToast(`פרויקט "${projectName}" נפתח במצב צפייה בלבד`, 'info');
+        } catch (err) {
+            console.error('Error opening project:', err);
+            showToast('שגיאה בפתיחת הפרויקט', 'error');
+        }
+    }
+
+    async function saveCurrentProject() {
+        if (!dataDirectoryHandle || !currentProjectName || isViewOnly) {
+            showToast('לא ניתן לשמור - אין פרויקט פתוח לעריכה', 'warning');
+            return;
+        }
+
+        try {
+            collectFormData();
+            const fileHandle = await dataDirectoryHandle.getFileHandle(`${currentProjectName}.json`);
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(state, null, 2));
+            await writable.close();
+
+            // Refresh lock
+            await refreshLock(currentProjectName);
+
+            showToast('הפרויקט נשמר בהצלחה', 'success');
+        } catch (err) {
+            console.error('Error saving project:', err);
+            showToast('שגיאה בשמירת הפרויקט', 'error');
+        }
+    }
+
+    async function releaseProjectLock(projectName) {
+        try {
+            await releaseLock(projectName);
+            currentProjectName = null;
+            currentProjectHandle = null;
+            updateLockIndicator(false, false);
+            await refreshProjectsList();
+        } catch (err) {
+            console.error('Error releasing lock:', err);
+        }
+    }
+
+    async function forceUnlockProject(projectName, lockedByUser) {
+        const confirm = window.confirm(`הפרויקט נעול על ידי ${lockedByUser}.\n\n⚠️ שבירת נעילה עלולה לגרום לאובדן נתונים אם המשתמש השני עדיין עובד.\n\nהאם לשבור את הנעילה?`);
+        if (!confirm) return;
+
+        try {
+            await releaseLock(projectName, true);
+            showToast('הנעילה שוברה', 'warning');
+            await refreshProjectsList();
+        } catch (err) {
+            console.error('Error force unlocking:', err);
+            showToast('שגיאה בשבירת הנעילה', 'error');
         }
     }
 
@@ -2347,6 +2893,7 @@
 
         // Update header title with icons
         const titles = {
+            projects: { icon: 'folder-open', text: 'ניהול פרויקטים' },
             trip: { icon: 'plane', text: 'פרטי הנסיעה' },
             travelers: { icon: 'users', text: 'נוסעים' },
             flights: { icon: 'plane', text: 'טיסות' },
@@ -3475,7 +4022,14 @@
     }
 
     // ==================== SAVE/LOAD PROJECT ====================
-    function saveProject() {
+    async function saveProject() {
+        // If we have a shared project open, save there
+        if (dataDirectoryHandle && currentProjectName && !isViewOnly) {
+            await saveCurrentProject();
+            return;
+        }
+
+        // Otherwise, save locally
         collectFormData();
         const dataStr = JSON.stringify(state, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
@@ -3485,7 +4039,7 @@
         a.download = `${state.trip.reportName || 'expense-report'}-${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        showToast('הפרויקט נשמר בהצלחה', 'success');
+        showToast('הפרויקט נשמר מקומית', 'success');
     }
 
     function loadProject(event) {
