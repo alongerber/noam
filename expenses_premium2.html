@@ -3743,100 +3743,137 @@
         };
         
         let travelerPayments = {};
-        
+
+        // Get number of travelers for limit calculations
+        const numTravelers = Math.max(1, document.querySelectorAll('.traveler-card').length);
+
         // Calculate flights
         document.querySelectorAll('#flightsBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            totals.flights.usd += amount;
-            totals.flights.ils += amount * rate;
-            totals.flights.recognized += amount * rate; // Flights are fully recognized
-            
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            totals.flights.usd += amountUSD;
+            totals.flights.ils += amountILS;
+            totals.flights.recognized += amountILS; // Flights are fully recognized
+
             if (paidBy !== 'חברה') {
-                totals.flights.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.flights.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
-        
+
         // Calculate hotels
         document.querySelectorAll('#hotelsBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const nights = parseInt(row.querySelector('.nights-cell')?.textContent) || 1;
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            const nightLimit = getHotelNightLimit(nights, settings);
-            const recognizedUSD = Math.min(amount / nights, nightLimit) * nights;
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            // Night limit is multiplied by number of travelers
+            const nightLimit = getHotelNightLimit(nights, settings) * numTravelers;
+            const recognizedUSD = Math.min(amountUSD / nights, nightLimit) * nights;
             const recognizedILS = recognizedUSD * rate;
-            const coordinationILS = Math.max(0, (amount * rate) - recognizedILS);
-            
-            totals.hotels.usd += amount;
-            totals.hotels.ils += amount * rate;
+            const coordinationILS = Math.max(0, amountILS - recognizedILS);
+
+            totals.hotels.usd += amountUSD;
+            totals.hotels.ils += amountILS;
             totals.hotels.recognized += recognizedILS;
             totals.hotels.coordination += coordinationILS;
-            
+
             if (paidBy !== 'חברה') {
-                totals.hotels.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.hotels.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
-        
+
         // Calculate per diem
         document.querySelectorAll('#perdiemBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const withHotel = row.querySelector('[data-field="withHotel"]')?.value === 'true';
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            const limitUSD = withHotel ? settings.perDiemWithHotel : settings.perDiemWithoutHotel;
-            const recognizedUSD = Math.min(amount, limitUSD);
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            // Per diem limit is multiplied by number of travelers
+            const baseLimitUSD = withHotel ? settings.perDiemWithHotel : settings.perDiemWithoutHotel;
+            const limitUSD = baseLimitUSD * numTravelers;
+            const recognizedUSD = Math.min(amountUSD, limitUSD);
             const recognizedILS = recognizedUSD * rate;
-            const coordinationILS = Math.max(0, (amount * rate) - recognizedILS);
-            
-            totals.perdiem.usd += amount;
-            totals.perdiem.ils += amount * rate;
+            const coordinationILS = Math.max(0, amountILS - recognizedILS);
+
+            totals.perdiem.usd += amountUSD;
+            totals.perdiem.ils += amountILS;
             totals.perdiem.recognized += recognizedILS;
             totals.perdiem.coordination += coordinationILS;
-            
+
             if (paidBy !== 'חברה') {
-                totals.perdiem.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.perdiem.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
-        
+
         // Calculate car rental
         document.querySelectorAll('#carBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const days = parseInt(row.querySelector('.days-cell')?.textContent) || 1;
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            const limitPerDay = settings.carRentalLimit;
-            const recognizedUSD = Math.min(amount / days, limitPerDay) * days;
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            // Car rental limit is multiplied by number of travelers
+            const limitPerDay = settings.carRentalLimit * numTravelers;
+            const recognizedUSD = Math.min(amountUSD / days, limitPerDay) * days;
             const recognizedILS = recognizedUSD * rate;
-            const coordinationILS = Math.max(0, (amount * rate) - recognizedILS);
-            
-            totals.car.usd += amount;
-            totals.car.ils += amount * rate;
+            const coordinationILS = Math.max(0, amountILS - recognizedILS);
+
+            totals.car.usd += amountUSD;
+            totals.car.ils += amountILS;
             totals.car.recognized += recognizedILS;
             totals.car.coordination += coordinationILS;
-            
+
             if (paidBy !== 'חברה') {
-                totals.car.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.car.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
-        
+
         // Calculate other expenses
         document.querySelectorAll('#otherBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            totals.other.usd += amount;
-            totals.other.ils += amount * rate;
-            totals.other.recognized += amount * rate; // Other expenses fully recognized
-            
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            totals.other.usd += amountUSD;
+            totals.other.ils += amountILS;
+            totals.other.recognized += amountILS; // Other expenses fully recognized
+
             if (paidBy !== 'חברה') {
-                totals.other.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.other.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
         
