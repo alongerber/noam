@@ -2823,6 +2823,9 @@
         // Initialize user session (shows login modal if needed)
         initUserSession();
 
+        // Initialize default/built-in travelers
+        initializeDefaultTravelers();
+
         loadFromLocalStorage();
         initializeTaxSettings();
         initializeNavigation();
@@ -3136,6 +3139,31 @@
     }
 
     // ==================== TRAVELERS ====================
+    // Default/built-in travelers
+    const DEFAULT_TRAVELERS = {
+        '015183726': { name: 'יונתן איזקוב', role: 'מנכ"ל', builtIn: true },
+        '029611566': { name: 'נועם כהן', role: 'מנהל כספים', builtIn: true },
+        '040549925': { name: 'חגי שטוף', role: 'מנהל פרוייקטים', builtIn: true },
+        '057673576': { name: 'גדי מויאל', role: 'מנהל תפעול', builtIn: true }
+    };
+
+    function initializeDefaultTravelers() {
+        const existing = JSON.parse(localStorage.getItem('knownTravelers') || '{}');
+        let updated = false;
+
+        // Add default travelers if they don't exist
+        for (const [id, data] of Object.entries(DEFAULT_TRAVELERS)) {
+            if (!existing[id]) {
+                existing[id] = { ...data, lastUsed: new Date().toISOString() };
+                updated = true;
+            }
+        }
+
+        if (updated) {
+            localStorage.setItem('knownTravelers', JSON.stringify(existing));
+        }
+    }
+
     // Travelers memory - save/load known travelers
     function getSavedTravelers() {
         try {
