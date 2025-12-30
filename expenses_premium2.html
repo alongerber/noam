@@ -3185,6 +3185,20 @@
         return travelers[id] || null;
     }
 
+    function lookupTravelerByName(name) {
+        if (!name || name.length < 2) return null;
+        const travelers = getSavedTravelers();
+        const nameLower = name.toLowerCase().trim();
+
+        // Find traveler by exact or partial name match
+        for (const [id, data] of Object.entries(travelers)) {
+            if (data.name && data.name.toLowerCase().includes(nameLower)) {
+                return { id, ...data };
+            }
+        }
+        return null;
+    }
+
     function addTraveler(data = {}) {
         const container = document.getElementById('travelersContainer');
         const index = container.querySelectorAll('.traveler-card').length + 1;
@@ -3203,13 +3217,13 @@
             </div>
             <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">ת.ז.</label>
-                    <input type="text" class="form-input traveler-id" value="${data.id || ''}" placeholder="מספר זהות" oninput="onTravelerIdInput(this)">
-                    <span class="form-hint">הקלד ת.ז. לחיפוש נוסע קיים</span>
+                    <label class="form-label">שם מלא</label>
+                    <input type="text" class="form-input traveler-name" value="${data.name || ''}" placeholder="שם הנוסע" oninput="onTravelerNameInput(this)" onchange="onTravelerDataChange(this)">
+                    <span class="form-hint">הקלד שם לחיפוש נוסע קיים</span>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">שם מלא</label>
-                    <input type="text" class="form-input traveler-name" value="${data.name || ''}" placeholder="שם הנוסע" onchange="onTravelerDataChange(this)">
+                    <label class="form-label">ת.ז.</label>
+                    <input type="text" class="form-input traveler-id" value="${data.id || ''}" placeholder="מספר זהות" oninput="onTravelerIdInput(this)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">תפקיד</label>
@@ -3235,6 +3249,26 @@
                 if (!roleInput.value && savedTraveler.role) roleInput.value = savedTraveler.role;
                 showToast(`נמצא נוסע קיים: ${savedTraveler.name}`, 'info');
                 updatePaidByOptions();
+            }
+        }
+    }
+
+    function onTravelerNameInput(input) {
+        const name = input.value.trim();
+        if (name.length >= 3) { // Only lookup if name is at least 3 chars
+            const savedTraveler = lookupTravelerByName(name);
+            if (savedTraveler) {
+                const card = input.closest('.traveler-card');
+                const idInput = card.querySelector('.traveler-id');
+                const roleInput = card.querySelector('.traveler-role');
+                // Only auto-fill if the fields are empty
+                if (!idInput.value) idInput.value = savedTraveler.id;
+                if (!roleInput.value && savedTraveler.role) roleInput.value = savedTraveler.role;
+                // Show toast only on exact match to avoid spam
+                if (savedTraveler.name.toLowerCase() === name.toLowerCase()) {
+                    showToast(`נמצא נוסע קיים: ${savedTraveler.name}`, 'info');
+                    updatePaidByOptions();
+                }
             }
         }
     }
