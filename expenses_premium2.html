@@ -2823,6 +2823,9 @@
         // Initialize user session (shows login modal if needed)
         initUserSession();
 
+        // Initialize default/built-in travelers
+        initializeDefaultTravelers();
+
         loadFromLocalStorage();
         initializeTaxSettings();
         initializeNavigation();
@@ -3136,6 +3139,31 @@
     }
 
     // ==================== TRAVELERS ====================
+    // Default/built-in travelers
+    const DEFAULT_TRAVELERS = {
+        '015183726': { name: 'יונתן איזקוב', role: 'מנכ"ל', builtIn: true },
+        '029611566': { name: 'נועם כהן', role: 'מנהל כספים', builtIn: true },
+        '040549925': { name: 'חגי שטוף', role: 'מנהל פרוייקטים', builtIn: true },
+        '057673576': { name: 'גדי מויאל', role: 'מנהל תפעול', builtIn: true }
+    };
+
+    function initializeDefaultTravelers() {
+        const existing = JSON.parse(localStorage.getItem('knownTravelers') || '{}');
+        let updated = false;
+
+        // Add default travelers if they don't exist
+        for (const [id, data] of Object.entries(DEFAULT_TRAVELERS)) {
+            if (!existing[id]) {
+                existing[id] = { ...data, lastUsed: new Date().toISOString() };
+                updated = true;
+            }
+        }
+
+        if (updated) {
+            localStorage.setItem('knownTravelers', JSON.stringify(existing));
+        }
+    }
+
     // Travelers memory - save/load known travelers
     function getSavedTravelers() {
         try {
@@ -3157,6 +3185,20 @@
         return travelers[id] || null;
     }
 
+    function lookupTravelerByName(name) {
+        if (!name || name.length < 2) return null;
+        const travelers = getSavedTravelers();
+        const nameLower = name.toLowerCase().trim();
+
+        // Find traveler by exact or partial name match
+        for (const [id, data] of Object.entries(travelers)) {
+            if (data.name && data.name.toLowerCase().includes(nameLower)) {
+                return { id, ...data };
+            }
+        }
+        return null;
+    }
+
     function addTraveler(data = {}) {
         const container = document.getElementById('travelersContainer');
         const index = container.querySelectorAll('.traveler-card').length + 1;
@@ -3175,13 +3217,13 @@
             </div>
             <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">ת.ז.</label>
-                    <input type="text" class="form-input traveler-id" value="${data.id || ''}" placeholder="מספר זהות" oninput="onTravelerIdInput(this)">
-                    <span class="form-hint">הקלד ת.ז. לחיפוש נוסע קיים</span>
+                    <label class="form-label">שם מלא</label>
+                    <input type="text" class="form-input traveler-name" value="${data.name || ''}" placeholder="שם הנוסע" oninput="onTravelerNameInput(this)" onchange="onTravelerDataChange(this)">
+                    <span class="form-hint">הקלד שם לחיפוש נוסע קיים</span>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">שם מלא</label>
-                    <input type="text" class="form-input traveler-name" value="${data.name || ''}" placeholder="שם הנוסע" onchange="onTravelerDataChange(this)">
+                    <label class="form-label">ת.ז.</label>
+                    <input type="text" class="form-input traveler-id" value="${data.id || ''}" placeholder="מספר זהות" oninput="onTravelerIdInput(this)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">תפקיד</label>
@@ -3207,6 +3249,26 @@
                 if (!roleInput.value && savedTraveler.role) roleInput.value = savedTraveler.role;
                 showToast(`נמצא נוסע קיים: ${savedTraveler.name}`, 'info');
                 updatePaidByOptions();
+            }
+        }
+    }
+
+    function onTravelerNameInput(input) {
+        const name = input.value.trim();
+        if (name.length >= 3) { // Only lookup if name is at least 3 chars
+            const savedTraveler = lookupTravelerByName(name);
+            if (savedTraveler) {
+                const card = input.closest('.traveler-card');
+                const idInput = card.querySelector('.traveler-id');
+                const roleInput = card.querySelector('.traveler-role');
+                // Only auto-fill if the fields are empty
+                if (!idInput.value) idInput.value = savedTraveler.id;
+                if (!roleInput.value && savedTraveler.role) roleInput.value = savedTraveler.role;
+                // Show toast only on exact match to avoid spam
+                if (savedTraveler.name.toLowerCase() === name.toLowerCase()) {
+                    showToast(`נמצא נוסע קיים: ${savedTraveler.name}`, 'info');
+                    updatePaidByOptions();
+                }
             }
         }
     }
@@ -3743,100 +3805,137 @@
         };
         
         let travelerPayments = {};
-        
+
+        // Get number of travelers for limit calculations
+        const numTravelers = Math.max(1, document.querySelectorAll('.traveler-card').length);
+
         // Calculate flights
         document.querySelectorAll('#flightsBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            totals.flights.usd += amount;
-            totals.flights.ils += amount * rate;
-            totals.flights.recognized += amount * rate; // Flights are fully recognized
-            
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            totals.flights.usd += amountUSD;
+            totals.flights.ils += amountILS;
+            totals.flights.recognized += amountILS; // Flights are fully recognized
+
             if (paidBy !== 'חברה') {
-                totals.flights.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.flights.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
-        
+
         // Calculate hotels
         document.querySelectorAll('#hotelsBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const nights = parseInt(row.querySelector('.nights-cell')?.textContent) || 1;
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            const nightLimit = getHotelNightLimit(nights, settings);
-            const recognizedUSD = Math.min(amount / nights, nightLimit) * nights;
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            // Night limit is multiplied by number of travelers
+            const nightLimit = getHotelNightLimit(nights, settings) * numTravelers;
+            const recognizedUSD = Math.min(amountUSD / nights, nightLimit) * nights;
             const recognizedILS = recognizedUSD * rate;
-            const coordinationILS = Math.max(0, (amount * rate) - recognizedILS);
-            
-            totals.hotels.usd += amount;
-            totals.hotels.ils += amount * rate;
+            const coordinationILS = Math.max(0, amountILS - recognizedILS);
+
+            totals.hotels.usd += amountUSD;
+            totals.hotels.ils += amountILS;
             totals.hotels.recognized += recognizedILS;
             totals.hotels.coordination += coordinationILS;
-            
+
             if (paidBy !== 'חברה') {
-                totals.hotels.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.hotels.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
-        
+
         // Calculate per diem
         document.querySelectorAll('#perdiemBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const withHotel = row.querySelector('[data-field="withHotel"]')?.value === 'true';
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            const limitUSD = withHotel ? settings.perDiemWithHotel : settings.perDiemWithoutHotel;
-            const recognizedUSD = Math.min(amount, limitUSD);
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            // Per diem limit is multiplied by number of travelers
+            const baseLimitUSD = withHotel ? settings.perDiemWithHotel : settings.perDiemWithoutHotel;
+            const limitUSD = baseLimitUSD * numTravelers;
+            const recognizedUSD = Math.min(amountUSD, limitUSD);
             const recognizedILS = recognizedUSD * rate;
-            const coordinationILS = Math.max(0, (amount * rate) - recognizedILS);
-            
-            totals.perdiem.usd += amount;
-            totals.perdiem.ils += amount * rate;
+            const coordinationILS = Math.max(0, amountILS - recognizedILS);
+
+            totals.perdiem.usd += amountUSD;
+            totals.perdiem.ils += amountILS;
             totals.perdiem.recognized += recognizedILS;
             totals.perdiem.coordination += coordinationILS;
-            
+
             if (paidBy !== 'חברה') {
-                totals.perdiem.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.perdiem.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
-        
+
         // Calculate car rental
         document.querySelectorAll('#carBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const days = parseInt(row.querySelector('.days-cell')?.textContent) || 1;
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            const limitPerDay = settings.carRentalLimit;
-            const recognizedUSD = Math.min(amount / days, limitPerDay) * days;
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            // Car rental limit is multiplied by number of travelers
+            const limitPerDay = settings.carRentalLimit * numTravelers;
+            const recognizedUSD = Math.min(amountUSD / days, limitPerDay) * days;
             const recognizedILS = recognizedUSD * rate;
-            const coordinationILS = Math.max(0, (amount * rate) - recognizedILS);
-            
-            totals.car.usd += amount;
-            totals.car.ils += amount * rate;
+            const coordinationILS = Math.max(0, amountILS - recognizedILS);
+
+            totals.car.usd += amountUSD;
+            totals.car.ils += amountILS;
             totals.car.recognized += recognizedILS;
             totals.car.coordination += coordinationILS;
-            
+
             if (paidBy !== 'חברה') {
-                totals.car.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.car.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
-        
+
         // Calculate other expenses
         document.querySelectorAll('#otherBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const paidBy = row.querySelector('[data-field="paidBy"]')?.value || 'חברה';
-            
-            totals.other.usd += amount;
-            totals.other.ils += amount * rate;
-            totals.other.recognized += amount * rate; // Other expenses fully recognized
-            
+            const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
+            const currencyRate = getCurrencyRate(currency);
+
+            // Convert to ILS first, then calculate USD
+            const amountILS = amount * currencyRate;
+            const amountUSD = amountILS / rate;
+
+            totals.other.usd += amountUSD;
+            totals.other.ils += amountILS;
+            totals.other.recognized += amountILS; // Other expenses fully recognized
+
             if (paidBy !== 'חברה') {
-                totals.other.paidByEmployee += amount * rate;
-                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amount * rate;
+                totals.other.paidByEmployee += amountILS;
+                travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
         
