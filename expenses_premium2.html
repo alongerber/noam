@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he-IL" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1691,15 +1691,24 @@
                             <span class="card-title-icon"><i data-lucide="users"></i></span>
                             נוסעים
                         </h2>
-                        <button class="btn btn-primary btn-sm" onclick="addTraveler()">
-                            <span><i data-lucide="plus"></i></span> הוסף נוסע
-                        </button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary btn-sm" onclick="openManageTravelersModal()">
+                                <span><i data-lucide="user-cog"></i></span> ניהול נוסעים קבועים
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="addTraveler()">
+                                <span><i data-lucide="plus"></i></span> הוסף נוסע
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body" id="travelersContainer">
                         <!-- Travelers will be added here -->
                     </div>
                 </div>
             </section>
+
+            <!-- Datalists for traveler autocomplete -->
+            <datalist id="knownTravelersNamesList"></datalist>
+            <datalist id="knownTravelersIdsList"></datalist>
 
             <!-- Flights Section -->
             <section class="content-section" id="flightsSection">
@@ -2163,6 +2172,49 @@
         </div>
     </div>
 
+    <!-- Manage Permanent Travelers Modal -->
+    <div class="modal-overlay" id="manageTravelersModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title">👥 ניהול נוסעים קבועים</h3>
+                <button class="modal-close" onclick="closeManageTravelersModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                    כל הנוסעים שנשמרו במערכת. ניתן להוסיף, לערוך או למחוק.
+                </p>
+
+                <!-- Add new traveler form -->
+                <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                    <h4 style="margin-bottom: 12px;">הוספת נוסע קבוע חדש</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">שם מלא</label>
+                            <input type="text" class="form-input" id="newTravelerName" placeholder="שם הנוסע">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ת.ז.</label>
+                            <input type="text" class="form-input" id="newTravelerId" placeholder="מספר זהות">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">תפקיד</label>
+                            <input type="text" class="form-input" id="newTravelerRole" placeholder="תפקיד">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" style="margin-top: 8px;" onclick="addPermanentTraveler()">
+                        <span><i data-lucide="plus"></i></span> הוסף נוסע
+                    </button>
+                </div>
+
+                <!-- Existing travelers list -->
+                <div id="permanentTravelersList" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeManageTravelersModal()">סגור</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Lock Status Indicator (will be shown when file is locked) -->
     <div class="lock-indicator" id="lockIndicator" style="display: none;">
         <span class="lock-icon" id="lockIcon">🔒</span>
@@ -2479,9 +2531,9 @@
             currentProjectName = projectName;
             currentProjectHandle = fileHandle;
 
-            // Load state
-            state = loadedState;
+            // Load state - clear first, THEN set state, THEN populate
             clearAllWithoutConfirm();
+            state = loadedState;
             populateFormFromState();
             recalculateAll();
             updateAllBadges();
@@ -2508,8 +2560,9 @@
             currentProjectName = projectName;
             currentProjectHandle = null; // No handle = no saving
 
-            state = loadedState;
+            // Clear first, THEN set state, THEN populate
             clearAllWithoutConfirm();
+            state = loadedState;
             populateFormFromState();
             recalculateAll();
             updateAllBadges();
@@ -2840,6 +2893,22 @@
         document.getElementById('reportDate').value = today;
     }
 
+    // Format date as DD/MM/YYYY (Israeli format)
+    function formatDateIL(dateStr) {
+        if (!dateStr) return '';
+        // Handle YYYY-MM-DD format from date inputs
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        // Try parsing as Date
+        try {
+            return new Date(dateStr).toLocaleDateString('he-IL');
+        } catch {
+            return dateStr;
+        }
+    }
+
     function loadFromLocalStorage() {
         const saved = localStorage.getItem('expenseReportState');
         if (saved) {
@@ -3162,6 +3231,33 @@
         if (updated) {
             localStorage.setItem('knownTravelers', JSON.stringify(existing));
         }
+
+        refreshTravelersDatalists();
+    }
+
+    // Update the datalists used for autocomplete in name/ID inputs
+    function refreshTravelersDatalists() {
+        const travelers = getSavedTravelers();
+        const namesList = document.getElementById('knownTravelersNamesList');
+        const idsList = document.getElementById('knownTravelersIdsList');
+        if (!namesList || !idsList) return;
+
+        namesList.innerHTML = '';
+        idsList.innerHTML = '';
+
+        for (const [id, data] of Object.entries(travelers)) {
+            // Name option (label shows ID + role)
+            const nameOpt = document.createElement('option');
+            nameOpt.value = data.name;
+            nameOpt.label = `${id}${data.role ? ' - ' + data.role : ''}`;
+            namesList.appendChild(nameOpt);
+
+            // ID option (label shows name + role)
+            const idOpt = document.createElement('option');
+            idOpt.value = id;
+            idOpt.label = `${data.name}${data.role ? ' - ' + data.role : ''}`;
+            idsList.appendChild(idOpt);
+        }
     }
 
     // Travelers memory - save/load known travelers
@@ -3176,8 +3272,11 @@
     function saveTravelerToMemory(id, name, role) {
         if (!id || !name) return;
         const travelers = getSavedTravelers();
-        travelers[id] = { name, role, lastUsed: new Date().toISOString() };
+        // Preserve builtIn flag if it exists
+        const existing = travelers[id] || {};
+        travelers[id] = { ...existing, name, role, lastUsed: new Date().toISOString() };
         localStorage.setItem('knownTravelers', JSON.stringify(travelers));
+        refreshTravelersDatalists();
     }
 
     function lookupTraveler(id) {
@@ -3218,12 +3317,12 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label class="form-label">שם מלא</label>
-                    <input type="text" class="form-input traveler-name" value="${data.name || ''}" placeholder="שם הנוסע" oninput="onTravelerNameInput(this)" onchange="onTravelerDataChange(this)">
+                    <input type="text" class="form-input traveler-name" value="${data.name || ''}" placeholder="שם הנוסע" list="knownTravelersNamesList" autocomplete="off" oninput="onTravelerNameInput(this)" onchange="onTravelerDataChange(this)">
                     <span class="form-hint">הקלד שם לחיפוש נוסע קיים</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">ת.ז.</label>
-                    <input type="text" class="form-input traveler-id" value="${data.id || ''}" placeholder="מספר זהות" oninput="onTravelerIdInput(this)">
+                    <input type="text" class="form-input traveler-id" value="${data.id || ''}" placeholder="מספר זהות" list="knownTravelersIdsList" autocomplete="off" oninput="onTravelerIdInput(this)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">תפקיד</label>
@@ -3297,6 +3396,110 @@
             card.querySelector('.traveler-badge').textContent = index + 1;
             card.querySelector('.traveler-number span:last-child').textContent = `נוסע ${index + 1}`;
         });
+    }
+
+    // ==================== MANAGE PERMANENT TRAVELERS ====================
+    function openManageTravelersModal() {
+        document.getElementById('manageTravelersModal').classList.add('active');
+        renderPermanentTravelersList();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function closeManageTravelersModal() {
+        document.getElementById('manageTravelersModal').classList.remove('active');
+        // Clear add form
+        document.getElementById('newTravelerName').value = '';
+        document.getElementById('newTravelerId').value = '';
+        document.getElementById('newTravelerRole').value = '';
+    }
+
+    function renderPermanentTravelersList() {
+        const travelers = getSavedTravelers();
+        const container = document.getElementById('permanentTravelersList');
+        const entries = Object.entries(travelers).sort((a, b) =>
+            (a[1].name || '').localeCompare(b[1].name || '', 'he')
+        );
+
+        if (entries.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">אין נוסעים שמורים</p>';
+            return;
+        }
+
+        container.innerHTML = entries.map(([id, data]) => `
+            <div style="display: flex; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px;">
+                <input type="text" class="form-input" data-id="${id}" data-field="name" value="${data.name || ''}" placeholder="שם" style="flex: 2;">
+                <input type="text" class="form-input" data-id="${id}" data-field="id" value="${id}" readonly style="flex: 1; background: var(--bg-secondary);">
+                <input type="text" class="form-input" data-id="${id}" data-field="role" value="${data.role || ''}" placeholder="תפקיד" style="flex: 1.5;">
+                ${data.builtIn ? '<span style="color: var(--accent); font-size: 12px;">קבוע</span>' : ''}
+                <button class="btn btn-primary btn-sm" onclick="updatePermanentTraveler('${id}')">שמור</button>
+                <button class="btn btn-danger btn-sm" onclick="deletePermanentTraveler('${id}')">מחק</button>
+            </div>
+        `).join('');
+    }
+
+    function addPermanentTraveler() {
+        const name = document.getElementById('newTravelerName').value.trim();
+        const id = document.getElementById('newTravelerId').value.trim();
+        const role = document.getElementById('newTravelerRole').value.trim();
+
+        if (!name || !id) {
+            showToast('יש להזין שם וגם ת.ז.', 'warning');
+            return;
+        }
+
+        const travelers = getSavedTravelers();
+        if (travelers[id]) {
+            showToast('נוסע עם ת.ז. זה כבר קיים', 'warning');
+            return;
+        }
+
+        travelers[id] = { name, role, lastUsed: new Date().toISOString() };
+        localStorage.setItem('knownTravelers', JSON.stringify(travelers));
+
+        document.getElementById('newTravelerName').value = '';
+        document.getElementById('newTravelerId').value = '';
+        document.getElementById('newTravelerRole').value = '';
+
+        refreshTravelersDatalists();
+        renderPermanentTravelersList();
+        showToast(`נוסע "${name}" נוסף בהצלחה`, 'success');
+    }
+
+    function updatePermanentTraveler(id) {
+        const container = document.getElementById('permanentTravelersList');
+        const nameInput = container.querySelector(`input[data-id="${id}"][data-field="name"]`);
+        const roleInput = container.querySelector(`input[data-id="${id}"][data-field="role"]`);
+
+        const name = nameInput.value.trim();
+        const role = roleInput.value.trim();
+
+        if (!name) {
+            showToast('שם לא יכול להיות ריק', 'warning');
+            return;
+        }
+
+        const travelers = getSavedTravelers();
+        const existing = travelers[id] || {};
+        travelers[id] = { ...existing, name, role };
+        localStorage.setItem('knownTravelers', JSON.stringify(travelers));
+
+        refreshTravelersDatalists();
+        showToast('נשמר בהצלחה', 'success');
+    }
+
+    function deletePermanentTraveler(id) {
+        const travelers = getSavedTravelers();
+        const t = travelers[id];
+        if (!t) return;
+
+        if (!confirm(`למחוק את הנוסע "${t.name}" (${id})?`)) return;
+
+        delete travelers[id];
+        localStorage.setItem('knownTravelers', JSON.stringify(travelers));
+
+        refreshTravelersDatalists();
+        renderPermanentTravelersList();
+        showToast('נמחק בהצלחה', 'info');
     }
 
     function getTravelerNames() {
@@ -3859,7 +4062,10 @@
             }
         });
 
-        // Calculate per diem
+        // Calculate per diem - CUMULATIVE calculation
+        // Sum all amounts and limits, then check cumulatively (across all days × travelers)
+        let perdiemTotalILS = 0;
+        let perdiemTotalLimitUSD = 0;
         document.querySelectorAll('#perdiemBody tr').forEach(row => {
             const amount = parseFloat(row.querySelector('[data-field="amount"]')?.value) || 0;
             const withHotel = row.querySelector('[data-field="withHotel"]')?.value === 'true';
@@ -3867,27 +4073,28 @@
             const currency = row.querySelector('[data-field="currency"]')?.value || 'USD';
             const currencyRate = getCurrencyRate(currency);
 
-            // Convert to ILS first, then calculate USD
             const amountILS = amount * currencyRate;
             const amountUSD = amountILS / rate;
 
-            // Per diem limit is multiplied by number of travelers
+            // Each row represents 1 day; limit per row = base × travelers
             const baseLimitUSD = withHotel ? settings.perDiemWithHotel : settings.perDiemWithoutHotel;
-            const limitUSD = baseLimitUSD * numTravelers;
-            const recognizedUSD = Math.min(amountUSD, limitUSD);
-            const recognizedILS = recognizedUSD * rate;
-            const coordinationILS = Math.max(0, amountILS - recognizedILS);
+            const rowLimitUSD = baseLimitUSD * numTravelers;
+
+            perdiemTotalILS += amountILS;
+            perdiemTotalLimitUSD += rowLimitUSD;
 
             totals.perdiem.usd += amountUSD;
             totals.perdiem.ils += amountILS;
-            totals.perdiem.recognized += recognizedILS;
-            totals.perdiem.coordination += coordinationILS;
 
             if (paidBy !== 'חברה') {
                 totals.perdiem.paidByEmployee += amountILS;
                 travelerPayments[paidBy] = (travelerPayments[paidBy] || 0) + amountILS;
             }
         });
+        // Cumulative recognized/coordination across all per diem rows
+        const perdiemTotalLimitILS = perdiemTotalLimitUSD * rate;
+        totals.perdiem.recognized = Math.min(perdiemTotalILS, perdiemTotalLimitILS);
+        totals.perdiem.coordination = Math.max(0, perdiemTotalILS - totals.perdiem.recognized);
 
         // Calculate car rental
         document.querySelectorAll('#carBody tr').forEach(row => {
@@ -4266,27 +4473,27 @@
         
         // Flights
         document.querySelectorAll('#flightsBody tr').forEach(row => {
-            csv += `טיסות,${row.querySelector('[data-field="date"]')?.value || ''},${row.querySelector('[data-field="route"]')?.value || ''},${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
+            csv += `טיסות,${formatDateIL(row.querySelector('[data-field="date"]')?.value || '')},${row.querySelector('[data-field="destination"]')?.value || row.querySelector('[data-field="route"]')?.value || ''},${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
         });
-        
+
         // Hotels
         document.querySelectorAll('#hotelsBody tr').forEach(row => {
-            csv += `לינות,${row.querySelector('[data-field="checkIn"]')?.value || ''},${row.querySelector('[data-field="hotel"]')?.value || ''},${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
+            csv += `לינות,,${row.querySelector('[data-field="country"]')?.value || row.querySelector('[data-field="hotel"]')?.value || ''},${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
         });
-        
+
         // Per diem
         document.querySelectorAll('#perdiemBody tr').forEach(row => {
-            csv += `אש"ל,${row.querySelector('[data-field="date"]')?.value || ''},אש"ל יומי,${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
+            csv += `אש"ל,${formatDateIL(row.querySelector('[data-field="date"]')?.value || '')},${row.querySelector('[data-field="description"]')?.value || 'אש"ל יומי'},${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
         });
         
         // Car
         document.querySelectorAll('#carBody tr').forEach(row => {
-            csv += `רכב,${row.querySelector('[data-field="startDate"]')?.value || ''},${row.querySelector('[data-field="company"]')?.value || ''},${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
+            csv += `רכב,,${row.querySelector('[data-field="country"]')?.value || row.querySelector('[data-field="company"]')?.value || ''},${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
         });
-        
+
         // Other
         document.querySelectorAll('#otherBody tr').forEach(row => {
-            csv += `אחרות,${row.querySelector('[data-field="date"]')?.value || ''},${row.querySelector('[data-field="description"]')?.value || ''},${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
+            csv += `אחרות,${formatDateIL(row.querySelector('[data-field="date"]')?.value || '')},${row.querySelector('[data-field="description"]')?.value || ''},${row.querySelector('[data-field="amount"]')?.value || ''},${row.querySelector('.amount-ils')?.textContent || ''},${row.querySelector('[data-field="paidBy"]')?.value || ''}\n`;
         });
         
         // Download
