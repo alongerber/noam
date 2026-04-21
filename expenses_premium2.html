@@ -4421,30 +4421,80 @@
             try {
                 const loaded = JSON.parse(e.target.result);
 
-                // Clear first, THEN set state, THEN populate
-                clearAllWithoutConfirm();
+                // Debug: show what was loaded
+                console.log('Loaded data:', loaded);
+                console.log('Has expenses?', !!loaded.expenses);
+                console.log('Flights:', loaded.expenses?.flights || loaded.flights);
+
+                // Clear DOM only (not state)
+                document.querySelectorAll('.form-input').forEach(input => {
+                    if (!input.hasAttribute('readonly')) input.value = '';
+                });
+                ['flightsBody', 'hotelsBody', 'perdiemBody', 'carBody', 'otherBody', 'advancesBody'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerHTML = '';
+                });
+                document.getElementById('travelersContainer').innerHTML = '';
+
+                // Set state from loaded data
                 state = loaded;
 
-                // Ensure state has proper structure
+                // Ensure proper structure
+                if (!state.trip) state.trip = {};
                 if (!state.expenses) state.expenses = {};
                 if (!state.travelers) state.travelers = [];
                 if (!state.advances) state.advances = [];
 
-                // Populate form
-                populateFormFromState();
+                // Populate trip info
+                document.getElementById('reportName').value = state.trip.reportName || '';
+                document.getElementById('companyName').value = state.trip.companyName || '';
+                document.getElementById('reportDate').value = isoToIL(state.trip.reportDate || '');
+                document.getElementById('tripCountry').value = state.trip.country || '';
+                document.getElementById('tripStartDate').value = isoToIL(state.trip.startDate || '');
+                document.getElementById('tripEndDate').value = isoToIL(state.trip.endDate || '');
+                document.getElementById('tripDays').value = state.trip.days || '';
+                document.getElementById('exchangeRate').value = state.trip.exchangeRate || 3.65;
 
-                // Recalculate
+                // Populate travelers
+                const travelers = Array.isArray(state.travelers) ? state.travelers : [];
+                console.log('Loading travelers:', travelers.length);
+                travelers.forEach(t => addTraveler(t));
+
+                // Populate expenses - check both formats
+                const exp = state.expenses || {};
+                const flights = exp.flights || state.flights || [];
+                const hotels = exp.hotels || state.hotels || [];
+                const perdiem = exp.perdiem || state.perdiem || [];
+                const car = exp.car || state.car || [];
+                const other = exp.other || state.other || [];
+                const advances = state.advances || [];
+
+                console.log('Loading flights:', flights.length, flights);
+                console.log('Loading hotels:', hotels.length);
+                console.log('Loading perdiem:', perdiem.length);
+
+                if (Array.isArray(flights)) flights.forEach(f => addFlightRow(f));
+                if (Array.isArray(hotels)) hotels.forEach(h => addHotelRow(h));
+                if (Array.isArray(perdiem)) perdiem.forEach(p => addPerDiemRow(p));
+                if (Array.isArray(car)) car.forEach(c => addCarRow(c));
+                if (Array.isArray(other)) other.forEach(o => addOtherRow(o));
+                if (Array.isArray(advances)) advances.forEach(a => addAdvanceRow(a));
+
+                // Update UI
+                updateAllBadges();
                 recalculateAll();
                 updateSummary();
+                if (typeof lucide !== 'undefined') lucide.createIcons();
 
                 showToast('הפרויקט נטען בהצלחה', 'success');
             } catch (error) {
                 console.error('Error loading project:', error);
+                alert('שגיאה: ' + error.message);
                 showToast('שגיאה בטעינת הקובץ', 'error');
             }
         };
         reader.readAsText(file);
-        event.target.value = ''; // Reset input
+        event.target.value = '';
     }
 
     function clearAll() {
