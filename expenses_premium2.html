@@ -2222,6 +2222,9 @@
     </div>
 
     <script>
+    // ==================== GLOBAL FLAGS ====================
+    let isLoadingProject = false; // Prevent auto-save during project load
+
     // ==================== USER & LOCK MANAGEMENT ====================
     let currentUser = localStorage.getItem('expenseUser') || '';
     let lockRefreshInterval = null;
@@ -2964,6 +2967,7 @@
     }
 
     function saveToLocalStorage() {
+        if (isLoadingProject) return; // Don't auto-save during load
         collectFormData();
         localStorage.setItem('expenseReportState', JSON.stringify(state));
     }
@@ -4419,14 +4423,11 @@
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
+                isLoadingProject = true; // Prevent auto-save
+
                 const loaded = JSON.parse(e.target.result);
 
-                // Debug: show what was loaded
-                console.log('Loaded data:', loaded);
-                console.log('Has expenses?', !!loaded.expenses);
-                console.log('Flights:', loaded.expenses?.flights || loaded.flights);
-
-                // Clear DOM only (not state)
+                // Clear DOM
                 document.querySelectorAll('.form-input').forEach(input => {
                     if (!input.hasAttribute('readonly')) input.value = '';
                 });
@@ -4436,10 +4437,8 @@
                 });
                 document.getElementById('travelersContainer').innerHTML = '';
 
-                // Set state from loaded data
+                // Set state
                 state = loaded;
-
-                // Ensure proper structure
                 if (!state.trip) state.trip = {};
                 if (!state.expenses) state.expenses = {};
                 if (!state.travelers) state.travelers = [];
@@ -4456,29 +4455,16 @@
                 document.getElementById('exchangeRate').value = state.trip.exchangeRate || 3.65;
 
                 // Populate travelers
-                const travelers = Array.isArray(state.travelers) ? state.travelers : [];
-                console.log('Loading travelers:', travelers.length);
-                travelers.forEach(t => addTraveler(t));
+                (state.travelers || []).forEach(t => addTraveler(t));
 
-                // Populate expenses - check both formats
+                // Populate expenses
                 const exp = state.expenses || {};
-                const flights = exp.flights || state.flights || [];
-                const hotels = exp.hotels || state.hotels || [];
-                const perdiem = exp.perdiem || state.perdiem || [];
-                const car = exp.car || state.car || [];
-                const other = exp.other || state.other || [];
-                const advances = state.advances || [];
-
-                console.log('Loading flights:', flights.length, flights);
-                console.log('Loading hotels:', hotels.length);
-                console.log('Loading perdiem:', perdiem.length);
-
-                if (Array.isArray(flights)) flights.forEach(f => addFlightRow(f));
-                if (Array.isArray(hotels)) hotels.forEach(h => addHotelRow(h));
-                if (Array.isArray(perdiem)) perdiem.forEach(p => addPerDiemRow(p));
-                if (Array.isArray(car)) car.forEach(c => addCarRow(c));
-                if (Array.isArray(other)) other.forEach(o => addOtherRow(o));
-                if (Array.isArray(advances)) advances.forEach(a => addAdvanceRow(a));
+                (exp.flights || []).forEach(f => addFlightRow(f));
+                (exp.hotels || []).forEach(h => addHotelRow(h));
+                (exp.perdiem || []).forEach(p => addPerDiemRow(p));
+                (exp.car || []).forEach(c => addCarRow(c));
+                (exp.other || []).forEach(o => addOtherRow(o));
+                (state.advances || []).forEach(a => addAdvanceRow(a));
 
                 // Update UI
                 updateAllBadges();
@@ -4486,11 +4472,12 @@
                 updateSummary();
                 if (typeof lucide !== 'undefined') lucide.createIcons();
 
+                isLoadingProject = false; // Re-enable auto-save
                 showToast('הפרויקט נטען בהצלחה', 'success');
             } catch (error) {
+                isLoadingProject = false;
                 console.error('Error loading project:', error);
-                alert('שגיאה: ' + error.message);
-                showToast('שגיאה בטעינת הקובץ', 'error');
+                showToast('שגיאה בטעינת הקובץ: ' + error.message, 'error');
             }
         };
         reader.readAsText(file);
