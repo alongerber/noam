@@ -503,17 +503,6 @@
             margin-top: 6px;
         }
 
-        /* Israeli date display */
-        .date-display-il {
-            display: block;
-            font-size: 0.85rem;
-            color: var(--accent);
-            font-weight: 500;
-            margin-top: 4px;
-            direction: ltr;
-            text-align: right;
-        }
-
         .form-error {
             font-size: 0.75rem;
             color: var(--accent-red);
@@ -1614,8 +1603,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">תאריך הדוח</label>
-                                <input type="date" class="form-input date-input-il" id="reportDate" onchange="updateHistoricalDateDefault(); updateDateDisplay(this)">
-                                <span class="date-display-il" id="reportDateDisplay"></span>
+                                <input type="text" class="form-input date-input-il" id="reportDate" placeholder="DD/MM/YYYY" maxlength="10" oninput="formatDateInput(this)" onchange="updateHistoricalDateDefault()">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">מדינת יעד</label>
@@ -1668,13 +1656,11 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">תאריך התחלה <span class="required">*</span></label>
-                                <input type="date" class="form-input date-input-il" id="tripStartDate" onchange="calculateDays(); updateDateDisplay(this)">
-                                <span class="date-display-il" id="tripStartDateDisplay"></span>
+                                <input type="text" class="form-input date-input-il" id="tripStartDate" placeholder="DD/MM/YYYY" maxlength="10" oninput="formatDateInput(this)" onchange="calculateDays()">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">תאריך סיום <span class="required">*</span></label>
-                                <input type="date" class="form-input date-input-il" id="tripEndDate" onchange="calculateDays(); updateDateDisplay(this)">
-                                <span class="date-display-il" id="tripEndDateDisplay"></span>
+                                <input type="text" class="form-input date-input-il" id="tripEndDate" placeholder="DD/MM/YYYY" maxlength="10" oninput="formatDateInput(this)" onchange="calculateDays()">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">מספר ימים</label>
@@ -2900,42 +2886,68 @@
         fetchExchangeRate();
         updateAllBadges();
         setDefaultDates();
-        updateAllDateDisplays();
     });
 
     function setDefaultDates() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('reportDate').value = today;
+        document.getElementById('reportDate').value = getTodayIL();
     }
 
-    // Format date as DD/MM/YYYY (Israeli format)
-    function formatDateIL(dateStr) {
+    // Convert ISO date (YYYY-MM-DD) to Israeli format (DD/MM/YYYY)
+    function isoToIL(dateStr) {
         if (!dateStr) return '';
-        // Handle YYYY-MM-DD format from date inputs
+        // Already in DD/MM/YYYY format
+        if (dateStr.includes('/')) return dateStr;
+        // Convert from YYYY-MM-DD
         const parts = dateStr.split('-');
         if (parts.length === 3) {
             return `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
-        // Try parsing as Date
-        try {
-            return new Date(dateStr).toLocaleDateString('he-IL');
-        } catch {
-            return dateStr;
-        }
+        return dateStr;
     }
 
-    function updateDateDisplay(input) {
-        const displayId = input.id + 'Display';
-        const display = document.getElementById(displayId);
-        if (display) {
-            display.textContent = input.value ? formatDateIL(input.value) : '';
+    // Convert Israeli format (DD/MM/YYYY) to ISO (YYYY-MM-DD)
+    function ilToISO(dateStr) {
+        if (!dateStr) return '';
+        // Already in ISO format
+        if (dateStr.includes('-') && dateStr.length === 10) return dateStr;
+        // Convert from DD/MM/YYYY
+        const parts = dateStr.split('/');
+        if (parts.length === 3 && parts[0].length <= 2) {
+            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
+        return dateStr;
     }
 
-    function updateAllDateDisplays() {
-        document.querySelectorAll('.date-input-il').forEach(input => {
-            updateDateDisplay(input);
-        });
+    // Auto-format date input as DD/MM/YYYY while typing
+    function formatDateInput(input) {
+        let value = input.value.replace(/[^\d]/g, ''); // Keep only digits
+
+        if (value.length > 8) value = value.substring(0, 8);
+
+        if (value.length >= 4) {
+            value = value.substring(0, 2) + '/' + value.substring(2, 4) + '/' + value.substring(4);
+        } else if (value.length >= 2) {
+            value = value.substring(0, 2) + '/' + value.substring(2);
+        }
+
+        input.value = value;
+    }
+
+    // Parse DD/MM/YYYY to Date object
+    function parseDateIL(dateStr) {
+        if (!dateStr) return null;
+        const iso = ilToISO(dateStr);
+        const date = new Date(iso);
+        return isNaN(date.getTime()) ? null : date;
+    }
+
+    // Format today as DD/MM/YYYY
+    function getTodayIL() {
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const yyyy = today.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
     }
 
     function loadFromLocalStorage() {
@@ -3166,10 +3178,11 @@
     function collectFormData() {
         state.trip.reportName = document.getElementById('reportName').value;
         state.trip.companyName = document.getElementById('companyName').value;
-        state.trip.reportDate = document.getElementById('reportDate').value;
+        // Store dates in ISO format for consistency
+        state.trip.reportDate = ilToISO(document.getElementById('reportDate').value);
         state.trip.country = document.getElementById('tripCountry').value;
-        state.trip.startDate = document.getElementById('tripStartDate').value;
-        state.trip.endDate = document.getElementById('tripEndDate').value;
+        state.trip.startDate = ilToISO(document.getElementById('tripStartDate').value);
+        state.trip.endDate = ilToISO(document.getElementById('tripEndDate').value);
         state.trip.days = parseInt(document.getElementById('tripDays').value) || 0;
         state.trip.exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 3.65;
 
@@ -3202,7 +3215,12 @@
             row.querySelectorAll('input, select').forEach(input => {
                 const field = input.dataset.field;
                 if (field) {
-                    rowData[field] = input.type === 'checkbox' ? input.checked : input.value;
+                    let value = input.type === 'checkbox' ? input.checked : input.value;
+                    // Convert date fields from IL format (DD/MM/YYYY) to ISO (YYYY-MM-DD)
+                    if (field === 'date' && typeof value === 'string' && value.includes('/')) {
+                        value = ilToISO(value);
+                    }
+                    rowData[field] = value;
                 }
             });
             if (Object.keys(rowData).length > 0) {
@@ -3213,28 +3231,38 @@
     }
 
     function populateFormFromState() {
-        document.getElementById('reportName').value = state.trip.reportName || '';
-        document.getElementById('companyName').value = state.trip.companyName || '';
-        document.getElementById('reportDate').value = state.trip.reportDate || '';
-        document.getElementById('tripCountry').value = state.trip.country || '';
-        document.getElementById('tripStartDate').value = state.trip.startDate || '';
-        document.getElementById('tripEndDate').value = state.trip.endDate || '';
-        document.getElementById('tripDays').value = state.trip.days || '';
-        document.getElementById('exchangeRate').value = state.trip.exchangeRate || 3.65;
+        document.getElementById('reportName').value = state.trip?.reportName || '';
+        document.getElementById('companyName').value = state.trip?.companyName || '';
+        // Convert ISO dates to IL format for display
+        document.getElementById('reportDate').value = isoToIL(state.trip?.reportDate || '');
+        document.getElementById('tripCountry').value = state.trip?.country || '';
+        document.getElementById('tripStartDate').value = isoToIL(state.trip?.startDate || '');
+        document.getElementById('tripEndDate').value = isoToIL(state.trip?.endDate || '');
+        document.getElementById('tripDays').value = state.trip?.days || '';
+        document.getElementById('exchangeRate').value = state.trip?.exchangeRate || 3.65;
 
-        // Populate travelers
-        state.travelers.forEach(t => addTraveler(t));
+        // Populate travelers (with defensive check)
+        const travelers = Array.isArray(state.travelers) ? state.travelers : [];
+        travelers.forEach(t => addTraveler(t));
 
-        // Populate expenses
-        state.expenses.flights.forEach(f => addFlightRow(f));
-        state.expenses.hotels.forEach(h => addHotelRow(h));
-        state.expenses.perdiem.forEach(p => addPerDiemRow(p));
-        state.expenses.car.forEach(c => addCarRow(c));
-        state.expenses.other.forEach(o => addOtherRow(o));
-        state.advances.forEach(a => addAdvanceRow(a));
+        // Populate expenses (with backwards compatibility)
+        // Support both state.expenses.X and state.X formats for old projects
+        const expenses = state.expenses || {};
+        const flights = Array.isArray(expenses.flights) ? expenses.flights : (Array.isArray(state.flights) ? state.flights : []);
+        const hotels = Array.isArray(expenses.hotels) ? expenses.hotels : (Array.isArray(state.hotels) ? state.hotels : []);
+        const perdiem = Array.isArray(expenses.perdiem) ? expenses.perdiem : (Array.isArray(state.perdiem) ? state.perdiem : []);
+        const car = Array.isArray(expenses.car) ? expenses.car : (Array.isArray(state.car) ? state.car : []);
+        const other = Array.isArray(expenses.other) ? expenses.other : (Array.isArray(state.other) ? state.other : []);
+        const advances = Array.isArray(state.advances) ? state.advances : [];
+
+        flights.forEach(f => addFlightRow(f));
+        hotels.forEach(h => addHotelRow(h));
+        perdiem.forEach(p => addPerDiemRow(p));
+        car.forEach(c => addCarRow(c));
+        other.forEach(o => addOtherRow(o));
+        advances.forEach(a => addAdvanceRow(a));
 
         updateAllBadges();
-        updateAllDateDisplays();
     }
 
     // ==================== TRAVELERS ====================
@@ -3613,8 +3641,9 @@
         const amountILS = amount * currencyRate;
 
         const row = document.createElement('tr');
+        const dateVal = isoToIL(data.date || '');
         row.innerHTML = `
-            <td><input type="date" class="table-input" data-field="date" value="${data.date || ''}"></td>
+            <td><input type="text" class="table-input date-input-il" data-field="date" value="${dateVal}" placeholder="DD/MM/YYYY" maxlength="10" oninput="formatDateInput(this)"></td>
             <td><input type="text" class="table-input" data-field="destination" value="${data.destination || ''}" placeholder="אתונה, יוון"></td>
             <td>
                 <select class="table-input" data-field="flightClass">
@@ -3726,9 +3755,10 @@
         const recognizedILS = Math.min(amountInUSD, limitUSD) * rate;
         const coordinationILS = Math.max(0, amountILS - recognizedILS);
 
+        const dateVal = isoToIL(data.date || '');
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><input type="date" class="table-input" data-field="date" value="${data.date || ''}"></td>
+            <td><input type="text" class="table-input date-input-il" data-field="date" value="${dateVal}" placeholder="DD/MM/YYYY" maxlength="10" oninput="formatDateInput(this)"></td>
             <td><input type="text" class="table-input" data-field="description" value="${data.description || ''}" placeholder="ארוחת ערב, קפה וכו'"></td>
             <td>
                 <select class="table-input" data-field="withHotel" onchange="updateRowCalculations(this)">
@@ -3852,9 +3882,10 @@
         const amountILS = amount * currencyRate;
         const recognizedILS = isRecognized ? amountILS : 0;
         
+        const dateVal = isoToIL(data.date || '');
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td><input type="date" class="table-input" data-field="date" value="${data.date || ''}"></td>
+            <td><input type="text" class="table-input date-input-il" data-field="date" value="${dateVal}" placeholder="DD/MM/YYYY" maxlength="10" oninput="formatDateInput(this)"></td>
             <td><input type="text" class="table-input" data-field="description" value="${data.description || ''}" placeholder="תיאור ההוצאה"></td>
             <td>
                 <select class="table-input" data-field="category">
@@ -4279,11 +4310,14 @@
 
     // ==================== UTILITY FUNCTIONS ====================
     function calculateDays() {
-        const start = document.getElementById('tripStartDate').value;
-        const end = document.getElementById('tripEndDate').value;
-        
-        if (start && end) {
-            const diffTime = new Date(end) - new Date(start);
+        const startStr = document.getElementById('tripStartDate').value;
+        const endStr = document.getElementById('tripEndDate').value;
+
+        const startDate = parseDateIL(startStr);
+        const endDate = parseDateIL(endStr);
+
+        if (startDate && endDate) {
+            const diffTime = endDate - startDate;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
             document.getElementById('tripDays').value = diffDays > 0 ? diffDays : '';
             state.trip.days = diffDays;
@@ -4426,7 +4460,7 @@
         // Clear specific trip fields explicitly
         document.getElementById('reportName').value = '';
         document.getElementById('companyName').value = '';
-        document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('reportDate').value = getTodayIL();
         document.getElementById('tripCountry').value = '';
         document.getElementById('tripStartDate').value = '';
         document.getElementById('tripEndDate').value = '';
