@@ -4415,23 +4415,28 @@
     function loadProject(event) {
         const file = event.target.files[0];
         if (!file) return;
-        
+
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const loaded = JSON.parse(e.target.result);
-                state = loaded;
-                
-                // Clear current data
+
+                // Clear first, THEN set state, THEN populate
                 clearAllWithoutConfirm();
-                
+                state = loaded;
+
+                // Ensure state has proper structure
+                if (!state.expenses) state.expenses = {};
+                if (!state.travelers) state.travelers = [];
+                if (!state.advances) state.advances = [];
+
                 // Populate form
                 populateFormFromState();
-                
+
                 // Recalculate
                 recalculateAll();
                 updateSummary();
-                
+
                 showToast('הפרויקט נטען בהצלחה', 'success');
             } catch (error) {
                 console.error('Error loading project:', error);
