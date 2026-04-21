@@ -503,6 +503,17 @@
             margin-top: 6px;
         }
 
+        /* Israeli date display */
+        .date-display-il {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--accent);
+            font-weight: 500;
+            margin-top: 4px;
+            direction: ltr;
+            text-align: right;
+        }
+
         .form-error {
             font-size: 0.75rem;
             color: var(--accent-red);
@@ -1603,7 +1614,8 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">תאריך הדוח</label>
-                                <input type="date" class="form-input" id="reportDate" onchange="updateHistoricalDateDefault()">
+                                <input type="date" class="form-input date-input-il" id="reportDate" onchange="updateHistoricalDateDefault(); updateDateDisplay(this)">
+                                <span class="date-display-il" id="reportDateDisplay"></span>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">מדינת יעד</label>
@@ -1656,11 +1668,13 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">תאריך התחלה <span class="required">*</span></label>
-                                <input type="date" class="form-input" id="tripStartDate" onchange="calculateDays()">
+                                <input type="date" class="form-input date-input-il" id="tripStartDate" onchange="calculateDays(); updateDateDisplay(this)">
+                                <span class="date-display-il" id="tripStartDateDisplay"></span>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">תאריך סיום <span class="required">*</span></label>
-                                <input type="date" class="form-input" id="tripEndDate" onchange="calculateDays()">
+                                <input type="date" class="form-input date-input-il" id="tripEndDate" onchange="calculateDays(); updateDateDisplay(this)">
+                                <span class="date-display-il" id="tripEndDateDisplay"></span>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">מספר ימים</label>
@@ -2886,6 +2900,7 @@
         fetchExchangeRate();
         updateAllBadges();
         setDefaultDates();
+        updateAllDateDisplays();
     });
 
     function setDefaultDates() {
@@ -2907,6 +2922,20 @@
         } catch {
             return dateStr;
         }
+    }
+
+    function updateDateDisplay(input) {
+        const displayId = input.id + 'Display';
+        const display = document.getElementById(displayId);
+        if (display) {
+            display.textContent = input.value ? formatDateIL(input.value) : '';
+        }
+    }
+
+    function updateAllDateDisplays() {
+        document.querySelectorAll('.date-input-il').forEach(input => {
+            updateDateDisplay(input);
+        });
     }
 
     function loadFromLocalStorage() {
@@ -3205,6 +3234,7 @@
         state.advances.forEach(a => addAdvanceRow(a));
 
         updateAllBadges();
+        updateAllDateDisplays();
     }
 
     // ==================== TRAVELERS ====================
@@ -4386,30 +4416,48 @@
     }
 
     function clearAllWithoutConfirm() {
-        // Clear form inputs
-        document.querySelectorAll('.form-input:not([readonly])').forEach(input => {
-            if (input.type !== 'date' || input.id === 'reportDate') {
+        // Clear ALL form inputs including dates
+        document.querySelectorAll('.form-input').forEach(input => {
+            if (!input.hasAttribute('readonly')) {
                 input.value = '';
             }
         });
-        
+
+        // Clear specific trip fields explicitly
+        document.getElementById('reportName').value = '';
+        document.getElementById('companyName').value = '';
+        document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('tripCountry').value = '';
+        document.getElementById('tripStartDate').value = '';
+        document.getElementById('tripEndDate').value = '';
+        document.getElementById('tripDays').value = '';
+
         // Clear tables
         ['flightsBody', 'hotelsBody', 'perdiemBody', 'carBody', 'otherBody', 'advancesBody'].forEach(id => {
             document.getElementById(id).innerHTML = '';
         });
-        
+
         // Clear travelers
         document.getElementById('travelersContainer').innerHTML = '';
-        
-        // Reset state
+
+        // Reset state completely
         state = {
-            trip: { ...state.trip },
+            trip: {
+                reportName: '',
+                companyName: '',
+                reportDate: new Date().toISOString().split('T')[0],
+                country: '',
+                startDate: '',
+                endDate: '',
+                days: 0,
+                exchangeRate: 3.65
+            },
             travelers: [],
             expenses: { flights: [], hotels: [], perdiem: [], car: [], other: [] },
             advances: [],
             taxSettings: state.taxSettings
         };
-        
+
         updateAllBadges();
         localStorage.removeItem('expenseReportState');
     }
